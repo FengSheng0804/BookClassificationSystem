@@ -6,10 +6,10 @@ import torch.nn.functional as F
 from sklearn import metrics
 import time
 from utils import get_time_dif
+# from tensorboardX import SummaryWriter
 
-"""
-    训练和评估模型
-"""
+
+# 权重初始化，默认xavier
 def init_network(model, method='xavier', exclude='embedding', seed=123):
     for name, w in model.named_parameters():
         if exclude not in name:
@@ -25,9 +25,7 @@ def init_network(model, method='xavier', exclude='embedding', seed=123):
             else:
                 pass
 
-"""
-    训练模型
-"""
+
 def train(config, model, train_iter, dev_iter, test_iter):
     start_time = time.time()
     model.train()
@@ -77,9 +75,7 @@ def train(config, model, train_iter, dev_iter, test_iter):
             break
     test(config, model, test_iter)
 
-"""
-    评估模型
-"""
+
 def test(config, model, test_iter):
     # test
     model.load_state_dict(torch.load(config.save_path))
@@ -92,9 +88,7 @@ def test(config, model, test_iter):
     print("Confusion Matrix...")
     print(test_confusion)
 
-"""
-    评估模型
-"""
+# 指标的评估
 def evaluate(config, model, data_iter, test=False):
     model.eval()
     loss_total = 0

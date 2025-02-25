@@ -1,0 +1,452 @@
+
+
+2024-10-09 10:24:56		Initialize successfully
+2024-10-09 10:25:04		Button1 pressed
+2024-10-09 10:25:05		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:25:38		aligo 159***403 login successfully
+2024-10-09 10:25:39		picture upload successfully
+2024-10-09 10:25:39		Button1 pressed
+2024-10-09 10:25:40		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:25:40		aligo 159***403 login successfully
+2024-10-09 10:25:41		picture upload successfully
+2024-10-09 10:26:21		Button1 pressed
+2024-10-09 10:26:22		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:26:22		aligo 159***403 login successfully
+2024-10-09 10:26:23		picture upload successfully
+2024-10-09 10:26:23		Button1 pressed
+2024-10-09 10:26:24		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:26:24		aligo 159***403 login successfully
+2024-10-09 10:26:25		picture upload successfully
+2024-10-09 10:27:39		Button1 pressed
+2024-10-09 10:27:40		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:27:40		aligo 159***403 login successfully
+2024-10-09 10:27:41		picture upload successfully
+2024-10-09 10:27:41		Button1 pressed
+2024-10-09 10:27:42		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:27:42		aligo 159***403 login successfully
+2024-10-09 10:27:43		picture upload successfully
+2024-10-09 10:28:04		Button1 pressed
+2024-10-09 10:28:05		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:28:05		aligo 159***403 login successfully
+2024-10-09 10:28:06		picture upload successfully
+2024-10-09 10:28:06		Button1 pressed
+2024-10-09 10:28:07		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:28:07		aligo 159***403 login successfully
+2024-10-09 10:28:08		picture upload successfully
+
+
+2024-10-09 10:29:56		Initialize successfully
+2024-10-09 10:29:59		Button1 pressed
+2024-10-09 10:30:00		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:30:00		aligo 159***403 login successfully
+2024-10-09 10:30:01		picture upload successfully
+2024-10-09 10:30:03		Button1 pressed
+2024-10-09 10:30:04		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:30:04		aligo 159***403 login successfully
+2024-10-09 10:30:05		picture upload successfully
+
+
+2024-10-09 10:35:55		Initialize successfully
+2024-10-09 10:35:56		Button1 pressed
+2024-10-09 10:35:57		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:35:58		aligo 159***403 login successfully
+2024-10-09 10:35:59		picture upload successfully
+2024-10-09 10:35:59		Button1 pressed
+2024-10-09 10:36:00		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:36:01		aligo 159***403 login successfully
+2024-10-09 10:36:02		picture upload successfully
+2024-10-09 10:36:15		Button1 pressed
+2024-10-09 10:36:16		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:36:17		aligo 159***403 login successfully
+2024-10-09 10:36:18		picture upload successfully
+2024-10-09 10:36:36		Button1 pressed
+2024-10-09 10:36:37		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:36:38		aligo 159***403 login successfully
+2024-10-09 10:36:39		picture upload successfully
+2024-10-09 10:37:00		Button1 pressed
+2024-10-09 10:37:02		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:37:02		aligo 159***403 login successfully
+2024-10-09 10:37:03		picture upload successfully
+2024-10-09 10:37:03		Button1 pressed
+2024-10-09 10:37:05		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:37:06		aligo 159***403 login successfully
+2024-10-09 10:37:07		picture upload successfully
+2024-10-09 10:37:26		Button1 pressed
+2024-10-09 10:37:27		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:37:28		aligo 159***403 login successfully
+2024-10-09 10:37:29		picture upload successfully
+2024-10-09 10:37:29		Button1 pressed
+2024-10-09 10:37:30		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:37:31		aligo 159***403 login successfully
+2024-10-09 10:37:32		picture upload successfully
+
+
+2024-10-09 10:43:18		Initialize successfully
+2024-10-09 10:43:25		Button1 pressed
+2024-10-09 10:43:26		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:43:27		aligo 159***403 login successfully
+2024-10-09 10:43:28		picture upload successfully
+2024-10-09 10:43:28		Button1 pressed
+2024-10-09 10:43:30		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:43:30		aligo 159***403 login successfully
+2024-10-09 10:43:31		picture upload successfully
+2024-10-09 10:44:21		Button1 pressed
+2024-10-09 10:44:23		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:44:24		aligo 159***403 login successfully
+2024-10-09 10:44:25		picture upload successfully
+2024-10-09 10:44:25		Button1 pressed
+2024-10-09 10:44:26		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:44:27		aligo 159***403 login successfully
+2024-10-09 10:44:28		picture upload successfully
+2024-10-09 10:44:55		Button1 pressed
+2024-10-09 10:44:56		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:44:57		aligo 159***403 login successfully
+2024-10-09 10:44:58		picture upload successfully
+2024-10-09 10:44:58		Button1 pressed
+2024-10-09 10:44:59		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:45:00		aligo 159***403 login successfully
+2024-10-09 10:45:01		picture upload successfully
+2024-10-09 10:45:40		Button1 pressed
+2024-10-09 10:45:42		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:45:42		aligo 159***403 login successfully
+2024-10-09 10:45:43		picture upload successfully
+2024-10-09 10:46:00		Button1 pressed
+2024-10-09 10:46:02		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:46:02		aligo 159***403 login successfully
+2024-10-09 10:46:04		picture upload successfully
+2024-10-09 10:46:04		Button1 pressed
+2024-10-09 10:46:05		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:46:06		aligo 159***403 login successfully
+2024-10-09 10:46:07		picture upload successfully
+2024-10-09 10:47:11		Button1 pressed
+2024-10-09 10:47:13		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:47:13		aligo 159***403 login successfully
+2024-10-09 10:47:14		picture upload successfully
+2024-10-09 10:47:14		Button1 pressed
+2024-10-09 10:47:16		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 10:47:16		aligo 159***403 login successfully
+2024-10-09 10:47:17		picture upload successfully
+
+
+2024-10-09 11:10:07		Initialize successfully
+2024-10-09 11:10:24		Button1 pressed
+2024-10-09 11:10:26		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 11:10:27		aligo 159***403 login successfully
+2024-10-09 11:10:28		picture upload successfully
+2024-10-09 11:10:28		Button1 pressed
+2024-10-09 11:10:29		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 11:10:30		aligo 159***403 login successfully
+2024-10-09 11:10:31		picture upload successfully
+2024-10-09 11:11:04		Button1 pressed
+2024-10-09 11:11:05		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 11:11:06		aligo 159***403 login successfully
+2024-10-09 11:11:07		picture upload successfully
+2024-10-09 11:11:07		Button1 pressed
+2024-10-09 11:11:08		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 11:11:09		aligo 159***403 login successfully
+2024-10-09 11:11:10		picture upload successfully
+2024-10-09 11:11:43		Button1 pressed
+2024-10-09 11:11:44		picture saved as /home/pi/dc/images/pic.jpg
+2024-10-09 11:11:45		aligo 159***403 login successfully
+2024-10-09 11:11:46		picture upload successfully
+2024-10-09 11:12:06		Button2 pressed
+2024-10-09 11:12:07		Set led successfully
+2024-10-09 11:12:14		Get text successfully
+2024-10-09 11:12:14		Get input successfully
+2024-10-09 11:12:14		The pic_class is classics
+
+
+2024-12-10 04:38:13		Initialize successfully
+
+
+2024-12-10 04:54:42		Initialize successfully
+
+
+2024-12-10 05:02:47		Initialize successfully
+
+
+2024-12-10 05:08:50		Initialize successfully
+2024-12-10 05:08:56		Button1 pressed
+2024-12-10 05:08:56		Button1 pressed
+2024-12-10 05:08:58		Camera open failed
+2024-12-10 05:08:58		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:10:00		aligo 159***403 login successfully
+2024-12-10 05:10:01		picture upload successfully
+2024-12-10 05:10:01		Button1 pressed
+2024-12-10 05:10:03		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:10:03		aligo 159***403 login successfully
+2024-12-10 05:10:04		picture upload successfully
+2024-12-10 05:11:27		Button1 pressed
+2024-12-10 05:11:29		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:11:30		aligo 159***403 login successfully
+2024-12-10 05:11:31		picture upload successfully
+2024-12-10 05:12:10		Button1 pressed
+2024-12-10 05:12:12		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:12:12		aligo 159***403 login successfully
+2024-12-10 05:12:14		picture upload successfully
+2024-12-10 05:12:38		Button1 pressed
+2024-12-10 05:12:40		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:12:40		aligo 159***403 login successfully
+2024-12-10 05:12:41		picture upload successfully
+2024-12-10 05:12:41		Button1 pressed
+2024-12-10 05:12:43		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:12:43		aligo 159***403 login successfully
+2024-12-10 05:12:45		picture upload successfully
+2024-12-10 05:13:06		Button1 pressed
+2024-12-10 05:13:08		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:13:09		aligo 159***403 login successfully
+2024-12-10 05:13:10		picture upload successfully
+2024-12-10 05:13:10		Button1 pressed
+2024-12-10 05:13:12		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:13:13		aligo 159***403 login successfully
+2024-12-10 05:13:14		picture upload successfully
+2024-12-10 05:13:30		Button1 pressed
+2024-12-10 05:13:32		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:13:33		aligo 159***403 login successfully
+2024-12-10 05:13:34		picture upload successfully
+2024-12-10 05:13:34		Button1 pressed
+2024-12-10 05:13:36		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:13:36		aligo 159***403 login successfully
+2024-12-10 05:13:37		picture upload successfully
+
+
+2024-12-10 05:20:13		Initialize successfully
+2024-12-10 05:20:18		Button1 pressed
+2024-12-10 05:20:18		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:20:19		aligo 159***403 login successfully
+2024-12-10 05:20:20		picture upload successfully
+2024-12-10 05:20:20		Button1 pressed
+2024-12-10 05:20:21		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:20:21		aligo 159***403 login successfully
+2024-12-10 05:20:22		picture upload successfully
+2024-12-10 05:20:56		Button1 pressed
+2024-12-10 05:20:57		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:20:58		aligo 159***403 login successfully
+2024-12-10 05:20:59		picture upload successfully
+2024-12-10 05:20:59		Button1 pressed
+2024-12-10 05:21:00		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:21:00		aligo 159***403 login successfully
+2024-12-10 05:21:01		picture upload successfully
+2024-12-10 05:21:20		Button1 pressed
+2024-12-10 05:21:21		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:21:21		aligo 159***403 login successfully
+2024-12-10 05:21:22		picture upload successfully
+2024-12-10 05:21:22		Button1 pressed
+2024-12-10 05:21:23		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:21:23		aligo 159***403 login successfully
+2024-12-10 05:21:24		picture upload successfully
+2024-12-10 05:21:58		Button1 pressed
+2024-12-10 05:21:59		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:22:00		aligo 159***403 login successfully
+2024-12-10 05:22:01		picture upload successfully
+2024-12-10 05:22:01		Button1 pressed
+2024-12-10 05:22:01		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:22:02		aligo 159***403 login successfully
+2024-12-10 05:22:03		picture upload successfully
+2024-12-10 05:22:24		Button1 pressed
+2024-12-10 05:22:25		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:22:25		aligo 159***403 login successfully
+2024-12-10 05:22:27		picture upload successfully
+2024-12-10 05:22:27		Button1 pressed
+2024-12-10 05:22:27		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:22:28		aligo 159***403 login successfully
+2024-12-10 05:22:29		picture upload successfully
+2024-12-10 05:22:57		Button1 pressed
+2024-12-10 05:22:57		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:22:58		aligo 159***403 login successfully
+2024-12-10 05:22:59		picture upload successfully
+2024-12-10 05:22:59		Button1 pressed
+2024-12-10 05:23:00		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:23:00		aligo 159***403 login successfully
+2024-12-10 05:23:02		picture upload successfully
+2024-12-10 05:23:21		Button1 pressed
+2024-12-10 05:23:22		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:23:22		aligo 159***403 login successfully
+2024-12-10 05:23:23		picture upload successfully
+2024-12-10 05:23:24		Button1 pressed
+2024-12-10 05:23:24		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:23:25		aligo 159***403 login successfully
+2024-12-10 05:23:26		picture upload successfully
+2024-12-10 05:23:30		Button1 pressed
+2024-12-10 05:23:30		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:23:31		aligo 159***403 login successfully
+2024-12-10 05:23:32		picture upload successfully
+2024-12-10 05:23:32		Button1 pressed
+2024-12-10 05:23:33		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:23:33		aligo 159***403 login successfully
+2024-12-10 05:23:34		picture upload successfully
+2024-12-10 05:23:36		Button1 pressed
+2024-12-10 05:23:36		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:23:37		aligo 159***403 login successfully
+2024-12-10 05:23:38		picture upload successfully
+2024-12-10 05:23:38		Button1 pressed
+2024-12-10 05:23:39		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:23:39		aligo 159***403 login successfully
+2024-12-10 05:23:41		picture upload successfully
+2024-12-10 05:24:20		Button1 pressed
+2024-12-10 05:24:21		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:22		aligo 159***403 login successfully
+2024-12-10 05:24:23		picture upload successfully
+2024-12-10 05:24:23		Button1 pressed
+2024-12-10 05:24:23		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:24		aligo 159***403 login successfully
+2024-12-10 05:24:24		picture upload successfully
+2024-12-10 05:24:36		Button1 pressed
+2024-12-10 05:24:37		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:38		aligo 159***403 login successfully
+2024-12-10 05:24:39		picture upload successfully
+2024-12-10 05:24:39		Button1 pressed
+2024-12-10 05:24:40		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:40		aligo 159***403 login successfully
+2024-12-10 05:24:42		picture upload successfully
+2024-12-10 05:24:43		Button1 pressed
+2024-12-10 05:24:44		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:44		aligo 159***403 login successfully
+2024-12-10 05:24:45		picture upload successfully
+2024-12-10 05:24:45		Button1 pressed
+2024-12-10 05:24:46		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:46		aligo 159***403 login successfully
+2024-12-10 05:24:47		picture upload successfully
+2024-12-10 05:24:49		Button1 pressed
+2024-12-10 05:24:49		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:50		aligo 159***403 login successfully
+2024-12-10 05:24:51		picture upload successfully
+2024-12-10 05:24:51		Button1 pressed
+2024-12-10 05:24:51		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:24:52		aligo 159***403 login successfully
+2024-12-10 05:24:53		picture upload successfully
+2024-12-10 05:25:41		Button1 pressed
+2024-12-10 05:25:42		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:25:42		aligo 159***403 login successfully
+2024-12-10 05:25:44		picture upload successfully
+2024-12-10 05:25:44		Button1 pressed
+2024-12-10 05:25:44		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:25:45		aligo 159***403 login successfully
+2024-12-10 05:25:46		picture upload successfully
+2024-12-10 05:25:48		Button1 pressed
+2024-12-10 05:25:48		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:25:49		aligo 159***403 login successfully
+2024-12-10 05:25:50		picture upload successfully
+2024-12-10 05:25:50		Button1 pressed
+2024-12-10 05:25:51		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:25:51		aligo 159***403 login successfully
+2024-12-10 05:25:53		picture upload successfully
+2024-12-10 05:25:54		Button1 pressed
+2024-12-10 05:25:54		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:25:55		aligo 159***403 login successfully
+2024-12-10 05:25:56		picture upload successfully
+2024-12-10 05:25:56		Button1 pressed
+2024-12-10 05:25:57		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:25:57		aligo 159***403 login successfully
+2024-12-10 05:25:58		picture upload successfully
+
+
+2024-12-10 05:27:45		Initialize successfully
+2024-12-10 05:27:47		Button1 pressed
+2024-12-10 05:27:48		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:27:49		aligo 159***403 login successfully
+2024-12-10 05:27:51		picture upload successfully
+2024-12-10 05:27:51		Button1 pressed
+2024-12-10 05:27:51		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:27:52		aligo 159***403 login successfully
+2024-12-10 05:27:53		picture upload successfully
+2024-12-10 05:27:54		Button1 pressed
+2024-12-10 05:27:54		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:27:55		aligo 159***403 login successfully
+2024-12-10 05:27:56		picture upload successfully
+2024-12-10 05:27:56		Button1 pressed
+2024-12-10 05:27:56		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:27:57		aligo 159***403 login successfully
+2024-12-10 05:27:58		picture upload successfully
+2024-12-10 05:28:00		Button1 pressed
+2024-12-10 05:28:01		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:28:01		aligo 159***403 login successfully
+2024-12-10 05:28:03		picture upload successfully
+2024-12-10 05:28:03		Button1 pressed
+2024-12-10 05:28:03		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:28:03		aligo 159***403 login successfully
+2024-12-10 05:28:04		picture upload successfully
+2024-12-10 05:28:07		Button2 pressed
+2024-12-10 05:28:08		Set led successfully
+2024-12-10 05:28:15		Get text successfully
+2024-12-10 05:28:15		Get input successfully
+2024-12-10 05:28:16		The pic_class is classics
+
+
+2024-12-10 05:35:02		Initialize successfully
+2024-12-10 05:35:07		Button1 pressed
+2024-12-10 05:35:08		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:35:08		aligo 159***403 login successfully
+2024-12-10 05:35:10		picture upload successfully
+2024-12-10 05:35:10		Button1 pressed
+2024-12-10 05:35:10		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:35:11		aligo 159***403 login successfully
+2024-12-10 05:35:12		picture upload successfully
+
+
+2024-12-10 05:36:52		Initialize successfully
+2024-12-10 05:36:56		Button1 pressed
+2024-12-10 05:36:57		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:36:58		aligo 159***403 login successfully
+2024-12-10 05:36:59		picture upload successfully
+2024-12-10 05:36:59		Button1 pressed
+2024-12-10 05:36:59		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:37:00		aligo 159***403 login successfully
+2024-12-10 05:37:01		picture upload successfully
+2024-12-10 05:37:11		Button2 pressed
+2024-12-10 05:37:12		Set led successfully
+2024-12-10 05:37:18		Get text successfully
+2024-12-10 05:37:18		Get input successfully
+2024-12-10 05:37:18		The pic_class is movie
+2024-12-10 05:37:28		Button1 pressed
+2024-12-10 05:37:29		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:37:30		aligo 159***403 login successfully
+2024-12-10 05:37:31		picture upload successfully
+2024-12-10 05:37:31		Button1 pressed
+2024-12-10 05:37:31		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:37:32		aligo 159***403 login successfully
+2024-12-10 05:37:33		picture upload successfully
+2024-12-10 05:37:37		Button2 pressed
+2024-12-10 05:37:38		Set led successfully
+2024-12-10 05:37:44		Get text successfully
+2024-12-10 05:37:44		Get input successfully
+2024-12-10 05:37:44		The pic_class is classics
+2024-12-10 05:37:44		Button2 pressed
+2024-12-10 05:37:44		Set led successfully
+2024-12-10 05:37:50		Get text successfully
+2024-12-10 05:37:50		Get input successfully
+2024-12-10 05:37:50		The pic_class is classics
+
+
+2024-12-10 05:41:26		Initialize successfully
+2024-12-10 05:41:27		Button1 pressed
+2024-12-10 05:41:28		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:41:29		aligo 159***403 login successfully
+2024-12-10 05:41:30		picture upload successfully
+2024-12-10 05:41:30		Button1 pressed
+2024-12-10 05:41:31		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 05:41:31		aligo 159***403 login successfully
+2024-12-10 05:41:32		picture upload successfully
+
+
+2024-12-10 06:17:51		Initialize successfully
+2024-12-10 06:18:06		Button1 pressed
+2024-12-10 06:18:07		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 06:18:07		aligo 159***403 login successfully
+2024-12-10 06:18:09		picture upload successfully
+2024-12-10 06:18:09		Button1 pressed
+2024-12-10 06:18:09		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 06:18:10		aligo 159***403 login successfully
+2024-12-10 06:18:11		picture upload successfully
+2024-12-10 06:18:30		Button1 pressed
+2024-12-10 06:18:31		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 06:18:32		aligo 159***403 login successfully
+2024-12-10 06:18:33		picture upload successfully
+2024-12-10 06:18:40		Button1 pressed
+2024-12-10 06:18:41		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 06:18:42		aligo 159***403 login successfully
+2024-12-10 06:18:43		picture upload successfully
+2024-12-10 06:18:43		Button1 pressed
+2024-12-10 06:18:44		picture saved as /home/pi/dc/images/pic.jpg
+2024-12-10 06:18:45		aligo 159***403 login successfully
+2024-12-10 06:18:46		picture upload successfully

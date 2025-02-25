@@ -4,7 +4,7 @@ import numpy as np
 from train_eval import train, init_network
 from importlib import import_module
 import argparse
-
+from tensorboardX import SummaryWriter
 
 parser = argparse.ArgumentParser(description='Chinese Text Classification')
 # 添加一个参数：选择模型
@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 
 if __name__ == '__main__':
-    dataset = './text_classificate'  # 数据集
+    dataset = 'content'  # 数据集
 
     # 搜狗:embedding_SougouNews.npz, 腾讯:embedding_Tencent.npz, 随机初始化:random
     embedding = 'embedding_SougouNews.npz'
