@@ -150,10 +150,10 @@ def get_time_dif(start_time):
 
 if __name__ == "__main__":
     '''提取预训练词向量'''
-    vocab_dir = "content/data/vocab.pkl"
-    pretrain_dir = "content/data/sgns.sogou.char"
+    vocab_dir = "./text_classificate/data/vocab.pkl"
+    pretrain_dir = "./text_classificate/data/sgns.sogou.char"
     emb_dim = 300
-    filename_trimmed_dir = "content/data/vocab.embedding.sougou"
+    filename_trimmed_dir = "./text_classificate/data/vocab.embedding.sougou"
     word_to_id = pkl.load(open(vocab_dir, 'rb'))
     embeddings = np.random.rand(len(word_to_id), emb_dim)
     f = open(pretrain_dir, "r", encoding='UTF-8')

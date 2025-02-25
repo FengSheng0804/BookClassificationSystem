@@ -1,0 +1,27 @@
+{
+    "python.createEnvironment.trigger": "off",
+    "editor.fontVariations": false,
+    "editor.fontSize": 16, // 字体大小
+    "python.analysis.completeFunctionParens": true, //补全括号
+    "editor.fontLigatures": false, // 字体连字
+    "editor.renderControlCharacters": true, //控制字符
+    "files.autoSave": "afterDelay", //自动保存文件
+    "editor.wordWrap": "on", //自动折行
+    "editor.mouseWheelZoom": true, //鼠标滚轮缩放
+    "editor.formatOnPaste": true, //自动格式化
+    "editor.formatOnSave": true, //自动格式化
+    "editor.formatOnType": true, //自动格式化
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder};${env:PYTHONPATH}"
+    },
+    "launch": {
+        "configurations": [
+            {
+                "env": {
+                    "PYTHONPATH": "${workspaceRoot}"
+                }
+            }
+        ],
+        "compounds": []
+    },
+}
