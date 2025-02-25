@@ -28,12 +28,12 @@ def split_text(text):
 x = import_module('models.TextRNN')
 config = x.Config('content', 'embedding_SougouNews.npz')
 model = x.Model(config)
-model.load_state_dict(torch.load('./content/saved_dict/TextRNN.ckpt'))
+model.load_state_dict(torch.load('./saved_dict/TextRNN.ckpt'))
 model.eval()
 
 # 获取原图片地址并二值化处理
 threshold=128
-pic_path = './images/source.jpg'
+pic_path = './text_classificate/images/source.jpg'
 image = Image.open(pic_path)
 image = image.convert('L')  # 转换为灰度图像
 binary_image = image.point(lambda p: p > threshold and 255)
@@ -48,7 +48,7 @@ stopwords_list = ['“','”','(',')',':','.','、',"'",'`','【','】','{','}',
                   '@', '#', '$', '……', '^', '&', '*', '|', '/','\\','"',
                   '~','0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 # 将停用词添加到这些符号中
-with open('./content/data/cn_stopwords.txt', 'r', encoding='utf-8') as f:
+with open('./text_classificate/data/cn_stopwords.txt', 'r', encoding='utf-8') as f:
     stopwords = f.readlines()
     for word in stopwords:
         stopwords_list.append(word.strip())
@@ -72,7 +72,7 @@ else:
     tokenizer = lambda x: [y for y in x]  # char-level
 
 # 获取vocab.pkl
-vocab = pkl.load(open('./content/data/vocab.pkl', 'rb'))
+vocab = pkl.load(open('./text_classificate/data/vocab.pkl', 'rb'))
 print(f"Vocab size: {len(vocab)}")
 
 # 定义变量

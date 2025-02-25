@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import os
 
 
 class Config(object):
@@ -23,13 +24,13 @@ class Config(object):
             if embedding != 'random' else None                                       # 预训练词向量
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')   # 设备
 
-        self.dropout = 0.3                                              # 随机失活
-        self.require_improvement = 1500                                 # 若超过1000batch效果还没提升，则提前结束训练
+        self.dropout = 0.4                                             # 随机失活
+        self.require_improvement = 1500                                 # 若超过1500batch效果还没提升，则提前结束训练
         self.num_classes = len(self.class_list)                         # 类别数
         self.n_vocab = 0                                                # 词表大小，在运行时赋值
         self.num_epochs = 16                                            # epoch数
         self.batch_size = 64                                            # mini-batch大小
-        self.pad_size = 14                                              # 每句话处理成的长度(短填长切)
+        self.pad_size = 16                                              # 每句话处理成的长度(短填长切)
         self.learning_rate = 1e-3                                       # 学习率
         self.embed = self.embedding_pretrained.size(1)\
             if self.embedding_pretrained is not None else 300           # 字向量维度
