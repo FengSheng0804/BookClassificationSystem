@@ -3,8 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import os
-
 
 class Config(object):
 
@@ -24,7 +22,7 @@ class Config(object):
             if embedding != 'random' else None                                       # 预训练词向量
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')   # 设备
 
-        self.dropout = 0.4                                             # 随机失活
+        self.dropout = 0.4                                              # 随机失活
         self.require_improvement = 1500                                 # 若超过1500batch效果还没提升，则提前结束训练
         self.num_classes = len(self.class_list)                         # 类别数
         self.n_vocab = 0                                                # 词表大小，在运行时赋值
