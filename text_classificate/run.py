@@ -13,16 +13,22 @@
 # 版本：1.1
 # 用途：将函数的功能进行拆分，使得代码更加清晰
 
+# 作者：高培骏
+# 创建日期：2025年2月26日
+# 版本：1.2
+# 用途：添加语音播报功能
+
 
 import RPi.GPIO as GPIO
 import time
-from importlib import import_module
 import torch
-from PIL import Image
 import pytesseract
 import pickle as pkl
 import cv2
+from JQ8900Controller import JQ8900Controller
 from aligo import Aligo
+from importlib import import_module
+from PIL import Image
 
 
 def replace_to_blank(text, str_list):
@@ -48,12 +54,9 @@ def split_text(text):
 # 定义中断事件回调函数：执行拍照事件
 def button_callback1(channel):
     print('Button1 pressed!')
-    
-    # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
-        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        f.write(f'\t\tButton1 pressed\n')
-
+    # 播放按键1声音：7
+    controller.uart2_play(7)
+    time.sleep(1)
     # 使用LED进行显示
     GPIO.output(4, GPIO.HIGH)
     GPIO.output(17, GPIO.HIGH)
@@ -68,6 +71,11 @@ def button_callback1(channel):
     GPIO.output(18, GPIO.LOW)
     time.sleep(0.2)
 
+    # 写入日志
+    with open('/home/pi/dc/log.txt', mode='a') as f:
+        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        f.write(f'\t\tButton1 pressed\n')
+
     # 将按键状态写入文档中
     # 初始化摄像头，0通常是默认的USB摄像头
     cap = cv2.VideoCapture(0)
@@ -77,6 +85,9 @@ def button_callback1(channel):
         with open('/home/pi/dc/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f'\t\tCamera open failed\n')
+        # 播放错误声音：8
+        controller.uart2_play(8)
+
         exit()
 
     # 捕获一帧图像
@@ -95,6 +106,11 @@ def button_callback1(channel):
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\tpicture saved as {filename}\n")
         
+        # 播放拍照成功声音：9
+        controller.uart2_play(9)
+        time.sleep(1)
+        
+        # 上传图片
         ali = Aligo()
         user_name = ali.get_user().user_name
         # 写入日志
@@ -205,12 +221,9 @@ def get_sentences(binary_image):
 # 定义中断事件回调函数：识别文字、判断类型、控制LED
 def button_callback2(channel):
     print("Button2 pressed!")
-    
-    # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
-        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        f.write(f"\t\tButton2 pressed\n")
-
+    # 播放按键2声音：10
+    controller.uart2_play(10)
+    time.sleep(1)
     # 使用LED进行显示
     for i in range(0, 2):
         GPIO.output(4, GPIO.HIGH)
@@ -229,7 +242,7 @@ def button_callback2(channel):
     # 写入日志
     with open('/home/pi/dc/log.txt', mode='a') as f:
         f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        f.write(f"\t\tSet led successfully\n")
+        f.write(f"\t\tButton2 pressed\n")
 
     # 获取模型
     x = import_module('models.TextRNN')
@@ -250,10 +263,9 @@ def button_callback2(channel):
     # 再次过滤空数据
     if not contents:
         print("No valid sentences after preprocessing!")
-        with open('/home/pi/dc/log.txt', mode='a') as f:
-            f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            f.write(f"\t\tNo valid sentences after preprocessing!\n")
-        
+        # 播放错误声音：11
+        controller.uart2_play(11)
+        time.sleep(1)
         # 设置流水线LED来表示出错
         GPIO.output(4, GPIO.HIGH)
         time.sleep(0.1)
@@ -275,6 +287,11 @@ def button_callback2(channel):
         time.sleep(0.1)
         GPIO.output(18, GPIO.LOW)
         time.sleep(0.1)
+
+        # 写入日志
+        with open('/home/pi/dc/log.txt', mode='a') as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            f.write(f"\t\tNo valid sentences after preprocessing!\n")
 
     # 构造输入张量
     x = torch.tensor([item[0] for item in contents], dtype=torch.long)
@@ -308,18 +325,39 @@ def button_callback2(channel):
 
         if text_class == 'movie':
             GPIO.output(4, GPIO.HIGH)  # 点亮LED
+            # 播报movie
+            controller.uart2_play(1)
+            time.sleep(1)
         elif text_class == 'classics':
             GPIO.output(17, GPIO.HIGH)  # 点亮LED
+            # 播报classics
+            controller.uart2_play(2)
+            time.sleep(1)
         elif text_class == 'educatioon':
             GPIO.output(27, GPIO.HIGH)  # 点亮LED
+            # 播报education
+            controller.uart2_play(3)
+            time.sleep(1)
         elif text_class == 'travel':
             GPIO.output(22, GPIO.HIGH)  # 点亮LED
+            # 播报travel
+            controller.uart2_play(4)
+            time.sleep(1)
         elif text_class == 'biology':
             GPIO.output(18, GPIO.HIGH)  # 点亮LED
+            # 播报biology
+            controller.uart2_play(5)
+            time.sleep(1)
 
 
 # 设置使用BCM编码
 GPIO.setmode(GPIO.BCM)
+# 控制语音播报
+controller = JQ8900Controller(port='/dev/ttyUSB0', baudrate=9600)
+# 设置音量（20级）
+controller.set_volume(20)
+
+time.sleep(1)
 
 # 设置GPIO
 # 设置LED灯为输出模式
@@ -339,6 +377,9 @@ GPIO.output(27, GPIO.LOW)  # 点亮LED
 GPIO.output(22, GPIO.LOW)  # 点亮LED
 GPIO.output(18, GPIO.LOW)  # 点亮LED
 
+
+# 播放初始化声音：6
+controller.uart2_play(6)
 # 闪烁两次表示开机自启动成功
 for i in range(0, 3):
     GPIO.output(4, GPIO.HIGH)
