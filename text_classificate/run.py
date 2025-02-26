@@ -14,7 +14,6 @@ from PIL import Image
 import pytesseract
 import pickle as pkl
 import cv2
-import traceback            #获取报错信息并写入文档
 from aligo import Aligo
 
 
@@ -28,14 +27,14 @@ def split_text(text):
     split_list1 = text.split('。')
     final_list = []
     for sentence1 in split_list1:
-        # 再使用'，'分割
         split_list2 = sentence1.split('，')
+        valid_sentences = []
         for sentence_str in split_list2:
-            # 删除比较少的字符
-            if len(sentence_str) < 4:
-                split_list2.remove(sentence_str)
-        if split_list2:
-            final_list.append(split_list2)
+            # 过滤空字符串和长度过短的句子
+            if len(sentence_str.strip()) >= 2:  # 调整为至少2个字符
+                valid_sentences.append(sentence_str.strip())
+        if valid_sentences:
+            final_list.append(valid_sentences)
     return final_list
 
 # 定义中断事件回调函数：执行拍照事件
@@ -51,14 +50,14 @@ def button_callback1(channel):
     GPIO.output(4, GPIO.HIGH)
     GPIO.output(17, GPIO.HIGH)
     GPIO.output(27, GPIO.HIGH)
-    GPIO.output(18, GPIO.HIGH)
     GPIO.output(22, GPIO.HIGH)
+    GPIO.output(18, GPIO.HIGH)
     time.sleep(0.2)
     GPIO.output(4, GPIO.LOW)
     GPIO.output(17, GPIO.LOW)
     GPIO.output(27, GPIO.LOW)
-    GPIO.output(18, GPIO.LOW)
     GPIO.output(22, GPIO.LOW)
+    GPIO.output(18, GPIO.LOW)
     
     # 延时实现按键防抖效果
     # time.sleep(1)
@@ -128,14 +127,14 @@ def button_callback2(channel):
         GPIO.output(4, GPIO.HIGH)
         GPIO.output(17, GPIO.HIGH)
         GPIO.output(27, GPIO.HIGH)
-        GPIO.output(18, GPIO.HIGH)
         GPIO.output(22, GPIO.HIGH)
+        GPIO.output(18, GPIO.HIGH)
         time.sleep(0.2)
         GPIO.output(4, GPIO.LOW)
         GPIO.output(17, GPIO.LOW)
         GPIO.output(27, GPIO.LOW)
-        GPIO.output(18, GPIO.LOW)
         GPIO.output(22, GPIO.LOW)
+        GPIO.output(18, GPIO.LOW)
         time.sleep(0.2)
     
     # 写入日志
@@ -152,7 +151,7 @@ def button_callback2(channel):
         
     # 获取原图片地址并二值化处理
     threshold = 128
-    pic_path = '/home/pi/dc/images/pic.jpg'
+    pic_path = '/home/pi/dc/images/source.jpg'
     image = Image.open(pic_path)
     image = image.convert('L')  # 转换为灰度图像
     binary_image = image.point(lambda p: p > threshold and 255)
@@ -160,10 +159,15 @@ def button_callback2(channel):
     # 获取二值化图片的文字
     text = pytesseract.image_to_string(binary_image, lang='chi_sim', config='--psm 6 --oem 3')
     # 获取停用词：
-    stopwords_list = ['“', '”', '(', ')', ':', '.', '、', "'", '`', '【', '】', '{', '}',
-                      '〔', '〕', '〈', '〉', ';', '《', '》', '%', '!', '！', '-', '?', '？',
-                      '@', '#', '$', '……', '^', '&', '*', '|', '/', '\\', '"',
-                      '~', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    stopwords_list = ['“','”','(',')','【','】','{','}','[',']','〔','〕','〈','〉',
+                  '《','》','（','）','〖','〗','『','』','「','」','<','>',
+                  '@', '#', '$', '…', '^', '&', '*', '|', '/','\\','"','：','；',
+                  '~','+','=','_',',','·','丨','‖','〇','″',':','.','、',"'",'`',
+                  '′',';','%','!','！','-','?','？','\'','"',
+                  '0','1','2','3','4','5','6','7','8','9',
+                  'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q',
+                  'r','s','t','u','v','w','x','y','z','A','B','C','D','E','F','G','H',
+                  'I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
     # 将停用词添加到这些符号中
     with open('/home/pi/dc/content/data/cn_stopwords.txt', 'r', encoding='utf-8') as f:
         stopwords = f.readlines()
@@ -200,34 +204,59 @@ def button_callback2(channel):
     pad_size = 14
     UNK, PAD = '<UNK>', '<PAD>'  # 未知字，padding符号
     contents = []
-
+    
     for text in content:
         words_line = []
-        # 使用tokenizer函数对文本内容进行分词
         token = tokenizer(text)
-        # 计算分词后的序列长度
         seq_len = len(token)
+        
+        # 过滤空序列
+        if seq_len == 0:
+            continue  # 跳过空句子
+            
         if pad_size:
-            # 如果长度比pad_size小，则补长
-            if len(token) < pad_size:
-                token.extend([vocab.get(PAD)] * (pad_size - len(token)))
-            # 否则，截取前pad_size个
+            if seq_len < pad_size:
+                token.extend([vocab.get(PAD)] * (pad_size - seq_len))
             else:
                 token = token[:pad_size]
-                seq_len = pad_size
-            # 根据vocab.pkl将word转化成对应的id
+                seq_len = pad_size  # 确保 seq_len 不超过 pad_size
+                
         for word in token:
             words_line.append(vocab.get(word, vocab.get(UNK)))
+        
         contents.append((words_line, 0, seq_len))
 
-    x = []
-    y = []
-    for tup in contents:
-        x.append(tup[0])
-        y.append(tup[2])
+    # 再次过滤空数据
+    if not contents:
+        print("No valid sentences after preprocessing!")
+        with open('/home/pi/dc/log.txt', mode='a') as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            f.write(f"\t\tNo valid sentences after preprocessing!\n")
+        # 设置流水线LED来表示出错
+        GPIO.output(4, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(4, GPIO.LOW)
+        time.sleep(0.1)
+        GPIO.output(17, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(17, GPIO.LOW)
+        time.sleep(0.1)
+        GPIO.output(27, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(27, GPIO.LOW)
+        time.sleep(0.1)
+        GPIO.output(22, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(22, GPIO.LOW)
+        time.sleep(0.1)
+        GPIO.output(18, GPIO.HIGH)
+        time.sleep(0.1)
+        GPIO.output(18, GPIO.LOW)
+        time.sleep(0.1)
 
-    x = torch.tensor(x)
-    y = torch.tensor(y)
+    # 构造输入张量
+    x = torch.tensor([item[0] for item in contents], dtype=torch.long)
+    y = torch.tensor([item[2] for item in contents], dtype=torch.long)
     data = (x, y)
     
     # 写入日志
@@ -262,9 +291,9 @@ def button_callback2(channel):
         elif text_class == 'educatioon':
             GPIO.output(27, GPIO.HIGH)  # 点亮LED
         elif text_class == 'travel':
-            GPIO.output(18, GPIO.HIGH)  # 点亮LED
-        elif text_class == 'biology':
             GPIO.output(22, GPIO.HIGH)  # 点亮LED
+        elif text_class == 'biology':
+            GPIO.output(18, GPIO.HIGH)  # 点亮LED
 
 
 # 设置使用BCM编码
@@ -275,8 +304,8 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(4, GPIO.OUT)
 GPIO.setup(17, GPIO.OUT)
 GPIO.setup(27, GPIO.OUT)
-GPIO.setup(18, GPIO.OUT)
 GPIO.setup(22, GPIO.OUT)
+GPIO.setup(18, GPIO.OUT)
 # 设置按键为输入模式
 GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -285,22 +314,22 @@ GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.output(4, GPIO.LOW)  # 点亮LED
 GPIO.output(17, GPIO.LOW)  # 点亮LED
 GPIO.output(27, GPIO.LOW)  # 点亮LED
-GPIO.output(18, GPIO.LOW)  # 点亮LED
 GPIO.output(22, GPIO.LOW)  # 点亮LED
+GPIO.output(18, GPIO.LOW)  # 点亮LED
 
 # 闪烁两次表示开机自启动成功
 for i in range(0, 3):
     GPIO.output(4, GPIO.HIGH)
     GPIO.output(17, GPIO.HIGH)
     GPIO.output(27, GPIO.HIGH)
-    GPIO.output(18, GPIO.HIGH)
     GPIO.output(22, GPIO.HIGH)
+    GPIO.output(18, GPIO.HIGH)
     time.sleep(0.2)
     GPIO.output(4, GPIO.LOW)
     GPIO.output(17, GPIO.LOW)
     GPIO.output(27, GPIO.LOW)
-    GPIO.output(18, GPIO.LOW)
     GPIO.output(22, GPIO.LOW)
+    GPIO.output(18, GPIO.LOW)
     time.sleep(0.2)
 
 time.sleep(2)
