@@ -4,6 +4,14 @@
 # 作者：高培骏
 # 创建日期：2024年10月9日
 # 版本：1.0
+# 用途：树莓派中断事件实现拍照和识别文字
+# 适用环境：树莓派4B
+# 适用语言：Python3
+
+# 作者：高培骏
+# 创建日期：2025年2月25日
+# 版本：1.1
+# 用途：将函数的功能进行拆分，使得代码更加清晰
 
 
 import RPi.GPIO as GPIO
@@ -58,9 +66,7 @@ def button_callback1(channel):
     GPIO.output(27, GPIO.LOW)
     GPIO.output(22, GPIO.LOW)
     GPIO.output(18, GPIO.LOW)
-    
-    # 延时实现按键防抖效果
-    # time.sleep(1)
+    time.sleep(0.2)
 
     # 将按键状态写入文档中
     # 初始化摄像头，0通常是默认的USB摄像头
@@ -113,50 +119,17 @@ def button_callback1(channel):
     # 释放摄像头资源
     cap.release()
 
-# 定义中断事件回调函数：识别文字、判断类型、控制LED
-def button_callback2(channel):
-    print("Button2 pressed!")
-    
-    # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
-        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        f.write(f"\t\tButton2 pressed\n")
-
-    # 使用LED进行显示
-    for i in range(0, 2):
-        GPIO.output(4, GPIO.HIGH)
-        GPIO.output(17, GPIO.HIGH)
-        GPIO.output(27, GPIO.HIGH)
-        GPIO.output(22, GPIO.HIGH)
-        GPIO.output(18, GPIO.HIGH)
-        time.sleep(0.2)
-        GPIO.output(4, GPIO.LOW)
-        GPIO.output(17, GPIO.LOW)
-        GPIO.output(27, GPIO.LOW)
-        GPIO.output(22, GPIO.LOW)
-        GPIO.output(18, GPIO.LOW)
-        time.sleep(0.2)
-    
-    # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
-        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        f.write(f"\t\tSet led successfully\n")
-
-    # 获取模型
-    x = import_module('models.TextRNN')
-    config = x.Config('/home/pi/dc/content', 'embedding_SougouNews.npz')
-    model = x.Model(config)
-    model.load_state_dict(torch.load('/home/pi/dc/content/saved_dict/TextRNN.ckpt', map_location='cpu', weights_only=True))
-    model.eval()
-        
-    # 获取原图片地址并二值化处理
+# 图片的预处理
+def preprocess_image(pic_path):
     threshold = 128
-    pic_path = '/home/pi/dc/images/source.jpg'
     image = Image.open(pic_path)
     image = image.convert('L')  # 转换为灰度图像
     binary_image = image.point(lambda p: p > threshold and 255)
 
-    # 获取二值化图片的文字
+    return binary_image
+
+# 获取语句列表
+def get_sentences(binary_image):
     text = pytesseract.image_to_string(binary_image, lang='chi_sim', config='--psm 6 --oem 3')
     # 获取停用词：
     stopwords_list = ['“','”','(',')','【','】','{','}','[',']','〔','〕','〈','〉',
@@ -213,18 +186,66 @@ def button_callback2(channel):
         # 过滤空序列
         if seq_len == 0:
             continue  # 跳过空句子
-            
+        
+        # 截断和填充
         if pad_size:
             if seq_len < pad_size:
                 token.extend([vocab.get(PAD)] * (pad_size - seq_len))
             else:
                 token = token[:pad_size]
                 seq_len = pad_size  # 确保 seq_len 不超过 pad_size
-                
+        
+        # 将token转换为数字
         for word in token:
             words_line.append(vocab.get(word, vocab.get(UNK)))
         
         contents.append((words_line, 0, seq_len))
+    return contents
+
+# 定义中断事件回调函数：识别文字、判断类型、控制LED
+def button_callback2(channel):
+    print("Button2 pressed!")
+    
+    # 写入日志
+    with open('/home/pi/dc/log.txt', mode='a') as f:
+        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        f.write(f"\t\tButton2 pressed\n")
+
+    # 使用LED进行显示
+    for i in range(0, 2):
+        GPIO.output(4, GPIO.HIGH)
+        GPIO.output(17, GPIO.HIGH)
+        GPIO.output(27, GPIO.HIGH)
+        GPIO.output(22, GPIO.HIGH)
+        GPIO.output(18, GPIO.HIGH)
+        time.sleep(0.2)
+        GPIO.output(4, GPIO.LOW)
+        GPIO.output(17, GPIO.LOW)
+        GPIO.output(27, GPIO.LOW)
+        GPIO.output(22, GPIO.LOW)
+        GPIO.output(18, GPIO.LOW)
+        time.sleep(0.2)
+    
+    # 写入日志
+    with open('/home/pi/dc/log.txt', mode='a') as f:
+        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        f.write(f"\t\tSet led successfully\n")
+
+    # 获取模型
+    x = import_module('models.TextRNN')
+    config = x.Config('/home/pi/dc/content', 'embedding_SougouNews.npz')
+    model = x.Model(config)
+    model.load_state_dict(torch.load('/home/pi/dc/content/saved_dict/TextRNN.ckpt', map_location='cpu', weights_only=True))
+    model.eval()
+        
+    # 获取原图片地址并二值化处理
+    pic_path = '/home/pi/dc/images/pic.jpg'
+
+    # 图片的预处理
+    binary_image = preprocess_image(pic_path)
+
+    # 获取图片中的文字
+    contents = get_sentences(binary_image)
 
     # 再次过滤空数据
     if not contents:
@@ -232,6 +253,7 @@ def button_callback2(channel):
         with open('/home/pi/dc/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\tNo valid sentences after preprocessing!\n")
+        
         # 设置流水线LED来表示出错
         GPIO.output(4, GPIO.HIGH)
         time.sleep(0.1)
