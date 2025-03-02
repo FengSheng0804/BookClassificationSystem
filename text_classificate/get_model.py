@@ -4,7 +4,6 @@ import numpy as np
 from train_eval import train, init_network
 from importlib import import_module
 import argparse
-from tensorboardX import SummaryWriter
 
 parser = argparse.ArgumentParser(description='Chinese Text Classification')
 # 添加一个参数：选择模型

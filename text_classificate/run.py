@@ -25,6 +25,7 @@ import torch
 import pytesseract
 import pickle as pkl
 import cv2
+from pic_pre_process import binarize_image
 from JQ8900Controller import JQ8900Controller
 from aligo import Aligo
 from importlib import import_module
@@ -72,7 +73,7 @@ def button_callback1(channel):
     time.sleep(0.2)
 
     # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
+    with open('/home/pi/dc/content/log.txt', mode='a') as f:
         f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         f.write(f'\t\tButton1 pressed\n')
 
@@ -82,7 +83,7 @@ def button_callback1(channel):
     # 检查摄像头是否成功打开
     if not cap.isOpened():
         # 写入日志
-        with open('/home/pi/dc/log.txt', mode='a') as f:
+        with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f'\t\tCamera open failed\n')
         # 播放错误声音：8
@@ -96,13 +97,13 @@ def button_callback1(channel):
     # 如果成功捕获图像，ret会为True
     if ret:
         # 定义图片的文件名和路径
-        filename = '/home/pi/dc/images/pic.jpg'
+        filename = '/home/pi/dc/content/images/pic.jpg'
 
         # 保存图片
         cv2.imwrite(filename, frame)
         print(f"picture saved as {filename}")
         # 写入日志
-        with open('/home/pi/dc/log.txt', mode='a') as f:
+        with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\tpicture saved as {filename}\n")
         
@@ -114,21 +115,21 @@ def button_callback1(channel):
         ali = Aligo()
         user_name = ali.get_user().user_name
         # 写入日志
-        with open('/home/pi/dc/log.txt', mode='a') as f:
+        with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\taligo {user_name} login successfully\n")
         # 上传图片
-        local_file = r"/home/pi/dc/images/pic.jpg"
+        local_file = r"/home/pi/dc/content/images/pic.jpg"
         up_file = ali.upload_file(local_file)
         # 写入日志
-        with open('/home/pi/dc/log.txt', mode='a') as f:
+        with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\tpicture upload successfully\n")
 
     else:
         # 写入日志
         print('get no picture')
-        with open('/home/pi/dc/log.txt', mode='a') as f:
+        with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\tget no picture\n")
 
@@ -136,12 +137,8 @@ def button_callback1(channel):
     cap.release()
 
 # 图片的预处理
-def preprocess_image(pic_path):
-    threshold = 128
-    image = Image.open(pic_path)
-    image = image.convert('L')  # 转换为灰度图像
-    binary_image = image.point(lambda p: p > threshold and 255)
-
+def preprocess_image(pic_path, threshold = 128):
+    binary_image = binarize_image(pic_path, threshold)
     return binary_image
 
 # 获取语句列表
@@ -174,7 +171,7 @@ def get_sentences(binary_image):
             content.append(text)
     
     # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
+    with open('/home/pi/dc/content/log.txt', mode='a') as f:
         f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         f.write(f"\t\tGet text successfully\n")
 
@@ -240,7 +237,7 @@ def button_callback2(channel):
         time.sleep(0.2)
     
     # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
+    with open('/home/pi/dc/content/log.txt', mode='a') as f:
         f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         f.write(f"\t\tButton2 pressed\n")
 
@@ -252,10 +249,10 @@ def button_callback2(channel):
     model.eval()
         
     # 获取原图片地址并二值化处理
-    pic_path = '/home/pi/dc/images/pic.jpg'
+    pic_path = '/home/pi/dc/content/images/pic.jpg'
 
     # 图片的预处理
-    binary_image = preprocess_image(pic_path)
+    binary_image = preprocess_image(pic_path, threshold=128)
 
     # 获取图片中的文字
     contents = get_sentences(binary_image)
@@ -289,7 +286,7 @@ def button_callback2(channel):
         time.sleep(0.1)
 
         # 写入日志
-        with open('/home/pi/dc/log.txt', mode='a') as f:
+        with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\tNo valid sentences after preprocessing!\n")
 
@@ -299,7 +296,7 @@ def button_callback2(channel):
     data = (x, y)
     
     # 写入日志
-    with open('/home/pi/dc/log.txt', mode='a') as f:
+    with open('/home/pi/dc/content/log.txt', mode='a') as f:
         f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         f.write(f'\t\tGet input successfully\n')
 
@@ -319,7 +316,7 @@ def button_callback2(channel):
         }
         text_class = max(num_dict, key=num_dict.get)
         print('The pic_class is ' + text_class)
-        with open('/home/pi/dc/log.txt', mode='a') as f:
+        with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             f.write(f"\t\tThe pic_class is {text_class}\n")
 
@@ -350,67 +347,68 @@ def button_callback2(channel):
             time.sleep(1)
 
 
-# 设置使用BCM编码
-GPIO.setmode(GPIO.BCM)
-# 控制语音播报
-controller = JQ8900Controller(port='/dev/ttyUSB0', baudrate=9600)
-# 设置音量（20级）
-controller.set_volume(20)
+if __name__ == '__main__':
+    # 设置使用BCM编码
+    GPIO.setmode(GPIO.BCM)
+    # 控制语音播报
+    controller = JQ8900Controller(port='/dev/ttyUSB0', baudrate=9600)
+    # 设置音量（20级）
+    controller.set_volume(20)
 
-time.sleep(1)
+    time.sleep(1)
 
-# 设置GPIO
-# 设置LED灯为输出模式
-GPIO.setup(4, GPIO.OUT)
-GPIO.setup(17, GPIO.OUT)
-GPIO.setup(27, GPIO.OUT)
-GPIO.setup(22, GPIO.OUT)
-GPIO.setup(18, GPIO.OUT)
-# 设置按键为输入模式
-GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    # 设置GPIO
+    # 设置LED灯为输出模式
+    GPIO.setup(4, GPIO.OUT)
+    GPIO.setup(17, GPIO.OUT)
+    GPIO.setup(27, GPIO.OUT)
+    GPIO.setup(22, GPIO.OUT)
+    GPIO.setup(18, GPIO.OUT)
+    # 设置按键为输入模式
+    GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-# 默认低电平
-GPIO.output(4, GPIO.LOW)  # 点亮LED
-GPIO.output(17, GPIO.LOW)  # 点亮LED
-GPIO.output(27, GPIO.LOW)  # 点亮LED
-GPIO.output(22, GPIO.LOW)  # 点亮LED
-GPIO.output(18, GPIO.LOW)  # 点亮LED
+    # 默认低电平
+    GPIO.output(4, GPIO.LOW)  # 点亮LED
+    GPIO.output(17, GPIO.LOW)  # 点亮LED
+    GPIO.output(27, GPIO.LOW)  # 点亮LED
+    GPIO.output(22, GPIO.LOW)  # 点亮LED
+    GPIO.output(18, GPIO.LOW)  # 点亮LED
 
 
-# 播放初始化声音：6
-controller.uart2_play(6)
-# 闪烁两次表示开机自启动成功
-for i in range(0, 3):
-    GPIO.output(4, GPIO.HIGH)
-    GPIO.output(17, GPIO.HIGH)
-    GPIO.output(27, GPIO.HIGH)
-    GPIO.output(22, GPIO.HIGH)
-    GPIO.output(18, GPIO.HIGH)
-    time.sleep(0.2)
-    GPIO.output(4, GPIO.LOW)
-    GPIO.output(17, GPIO.LOW)
-    GPIO.output(27, GPIO.LOW)
-    GPIO.output(22, GPIO.LOW)
-    GPIO.output(18, GPIO.LOW)
-    time.sleep(0.2)
+    # 播放初始化声音：6
+    controller.uart2_play(6)
+    # 闪烁两次表示开机自启动成功
+    for i in range(0, 3):
+        GPIO.output(4, GPIO.HIGH)
+        GPIO.output(17, GPIO.HIGH)
+        GPIO.output(27, GPIO.HIGH)
+        GPIO.output(22, GPIO.HIGH)
+        GPIO.output(18, GPIO.HIGH)
+        time.sleep(0.2)
+        GPIO.output(4, GPIO.LOW)
+        GPIO.output(17, GPIO.LOW)
+        GPIO.output(27, GPIO.LOW)
+        GPIO.output(22, GPIO.LOW)
+        GPIO.output(18, GPIO.LOW)
+        time.sleep(0.2)
 
-time.sleep(2)
+    time.sleep(2)
 
-# 为按钮引脚添加中断检测，当按钮被按下时（从高电平到低电平），调用button_callback函数
-GPIO.add_event_detect(20, GPIO.FALLING, callback=button_callback1, bouncetime=200)
-GPIO.add_event_detect(21, GPIO.FALLING, callback=button_callback2, bouncetime=200)
+    # 为按钮引脚添加中断检测，当按钮被按下时（从高电平到低电平），调用button_callback函数
+    GPIO.add_event_detect(20, GPIO.FALLING, callback=button_callback1, bouncetime=200)
+    GPIO.add_event_detect(21, GPIO.FALLING, callback=button_callback2, bouncetime=200)
 
-with open('/home/pi/dc/log.txt', mode='a') as f:
-    f.write("\n\n")
-    f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    f.write(f"\t\tInitialize successfully\n")
+    with open('/home/pi/dc/content/log.txt', mode='a') as f:
+        f.write("\n\n")
+        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        f.write(f"\t\tInitialize successfully\n")
 
-warning_str = 'Waiting for button'
+    warning_str = 'Waiting for button'
 
-try:
-    while True:
-        time.sleep(1)
-        print(warning_str)
-except KeyboardInterrupt:
-    GPIO.cleanup()
+    try:
+        while True:
+            time.sleep(1)
+            print(warning_str)
+    except KeyboardInterrupt:
+        GPIO.cleanup()
