@@ -290,6 +290,158 @@ def find_book_corners_and_split(img_path):
 
     return left, right
 
+# ===============================================水平矫正+垂直矫正===============================================
+
+# 得到有序的四个角点
+def order_points(pts):
+    rect = np.zeros((4, 2), dtype="float32")
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]  # 左上
+    rect[2] = pts[np.argmax(s)]  # 右下
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]  # 右上
+    rect[3] = pts[np.argmax(diff)]  # 左下
+    return rect
+
+# 自动查找书页四个角点
+def auto_detect_page_corners(img):
+    # 预处理强化文字对比度
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.bilateralFilter(gray, 15, 75, 75)  # 保边滤波
+    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(16,16))
+    enhanced = clahe.apply(blur)
+
+    # 动态参数计算
+    h, w = img.shape[:2]
+    block_size = max(31, int(min(h,w)/15)*2+1)  # 确保足够大的窗口
+    c_value = max(7, int(min(h,w)/100))
+    
+    # 二值化强化边缘
+    thresh = cv2.adaptiveThreshold(enhanced, 255, 
+                                  cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                  cv2.THRESH_BINARY, block_size, c_value)
+
+    # 形态学重建（针对密集文字优化）
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=3)
+    opened = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=2)
+
+    # 多层轮廓分析
+    contours, hierarchy = cv2.findContours(opened, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # 筛选有效轮廓
+    valid_contours = []
+    for i, cnt in enumerate(contours):
+        # 层级校验（仅最外层父轮廓）
+        if hierarchy[0][i][3] != -1:
+            continue
+        
+        # 几何特征校验
+        area = cv2.contourArea(cnt)
+        perimeter = cv2.arcLength(cnt, True)
+        if area < (h*w*0.5) or perimeter < (h+w)*1.5:
+            continue
+            
+        # 矩形度验证
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        box_area = cv2.contourArea(box)
+        if abs(1 - area/box_area) > 0.3:
+            continue
+            
+        valid_contours.append(cnt)
+
+    # # ==================================================== 可视化调试 ====================================================
+    # cv2.drawContours(img, valid_contours, -1, (0,255,0), 4)
+    # show_image(img)
+
+    # 选择最佳候选
+    if not valid_contours:
+        raise ValueError("未找到有效书页轮廓")
+        
+    page_contour = max(valid_contours, key=cv2.contourArea)
+
+    # 亚像素级角点精修
+    epsilon = 0.01 * cv2.arcLength(page_contour, True)
+    approx = cv2.approxPolyDP(page_contour, epsilon, True)
+    corners = cv2.cornerSubPix(gray, np.float32(approx.reshape(-1,2)), 
+                             (5,5), (-1,-1), 
+                             (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001))
+    
+    # 获取全局垂直极值点，将上面两个角点的纵坐标调整为书页的最高点，下面两个角点的纵坐标调整为书页的最低点
+    all_points = page_contour.reshape(-1,2)
+    top_point = all_points[np.argmin(all_points[:,1])]  # 最高点(Y最小)
+    bottom_point = all_points[np.argmax(all_points[:,1])]  # 最低点(Y最大)
+    
+    (tl, tr, br, bl) = order_points(corners)
+    adjusted_points = np.array([
+        [tl[0], top_point[1] - 10],    # 左上保持X，Y设为全局最高并预留10像素
+        [tr[0], top_point[1] - 10],    # 右上保持X，Y设为全局最高并预留10像素
+        [br[0], bottom_point[1] + 10], # 右下保持X，Y设为全局最低并预留10像素
+        [bl[0], bottom_point[1] + 10]  # 左下保持X，Y设为全局最低并预留10像素
+    ], dtype=np.float32)
+    
+    return adjusted_points
+
+# 透视变换
+def horizontal_warp_image(img, src_points):
+# 坐标排序验证
+    if src_points.shape != (4, 2):
+        raise ValueError("必须提供4个二维坐标点")
+
+    # 智能尺寸计算
+    (tl, tr, br, bl) = src_points
+    width = max(np.linalg.norm(tr - tl), np.linalg.norm(br - bl))
+    height = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))
+
+    # 构建目标矩形（上下严格等宽）
+    dst = np.array([
+        [0, 0],
+        [width - 1, 0],  # 确保不越界
+        [width - 1, height - 1],
+        [0, height - 1]
+    ], dtype="float32")
+
+    # 计算变换矩阵
+    M = cv2.getPerspectiveTransform(src_points, dst)
+    
+    # 执行变换（带抗锯齿处理）
+    warped = cv2.warpPerspective(
+        img, M, 
+        (int(width), int(height)),
+        flags=cv2.INTER_LANCZOS4,
+        borderMode=cv2.BORDER_REPLICATE
+    )
+    
+    return warped
+
+# 书页矫正主函数
+def book_page_rectifier(img_path):
+    img = cv2.imread(img_path)
+    # 获取浮点型坐标（例如：[[123.4, 56.7], ...]）
+    corners = auto_detect_page_corners(img)  
+
+    # # ==================================================== 可视化调试 ====================================================
+    # # 转换为整数坐标
+    # int_corners = corners.astype(int)
+    # debug_img = img.copy()
+    # for pt in int_corners:
+    #     # 确保坐标格式为Python原生整数元组
+    #     center = (int(pt[0]), int(pt[1]))  # 双重转换确保类型安全
+    #     cv2.circle(debug_img, center, 10, (0,0,255), -1)
+    # # 将角点坐标连接为四边形
+    # for i in range(4):
+    #     cv2.line(debug_img, tuple(int_corners[i]), 
+    #             tuple(int_corners[(i+1)%4]), (0,255,0), 4)
+    # show_image(debug_img)
+
+    horizontal_img =  horizontal_warp_image(img, corners)
+
+    # show_image(horizontal_img)
+
+    return horizontal_img
+
+
 if __name__ == "__main__":
     for i in range(1, 4):
         origin_path = f'./text_classificate/content/images/{i}.png'
@@ -301,3 +453,9 @@ if __name__ == "__main__":
         left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_rotated.png")
         cv2.imwrite(f"./text_classificate/content/images/{i}_left_page.png", left_page)
         cv2.imwrite(f"./text_classificate/content/images/{i}_right_page.png", right_page)
+
+        # 书页矫正
+        corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_left_page.png")
+        corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_right_page.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_left.png", corrected_left)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_right.png", corrected_right)
