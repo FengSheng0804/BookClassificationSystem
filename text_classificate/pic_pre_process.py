@@ -3,7 +3,9 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-from math import atan2, degrees, sqrt
+from math import atan, atan2, degrees, sqrt
+import pytesseract
+from pytesseract import Output
 from sklearn.cluster import DBSCAN
 from scipy.interpolate import CubicSpline
 from dataset_get.pic_to_text_by_OCR import get_pic_text
@@ -417,7 +419,7 @@ def horizontal_warp_image(img, src_points):
 
 
 # 书页在垂直方向上展开
-def vertical_warp_image(img, num_cells=50, k=1.3):
+def vertical_warp_image(img, num_cells=30, k=1.3):
     # ========== 图像预处理 ==========
     # 预处理强化文字对比度
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -683,31 +685,90 @@ def book_page_rectifier(img_path):
 
     vertical_img = vertical_warp_image(horizontal_img)
 
+    # # ==================================================== 可视化调试 ====================================================
     # show_image(horizontal_img)
     # show_image(vertical_img)
 
     return vertical_img
 
+# ===============================================文字方向矫正===============================================
+def rotate_text_image(img_path, max_angle=10):
+    img = cv2.imread(img_path)
+    # 1. 灰度化 + 高斯降噪
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (7, 7), 0)
+
+    # 2. 自适应阈值分割
+    thresh = cv2.adaptiveThreshold(blurred, 255, 
+                                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                cv2.THRESH_BINARY_INV, 21, 10)
+
+    # show_image(thresh)
+
+    # 3. 形态学操作（连接字符间隙+去除孤立噪声）
+    kernel = np.ones((3, 3), np.uint8)
+    cleaned = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    cleaned = cv2.dilate(cleaned, kernel, iterations=5)
+
+    # show_image(cleaned)
+
+    # 霍夫直线检测
+    lines = cv2.HoughLinesP(cleaned, 1, np.pi / 180, 200, minLineLength=200, maxLineGap=3)
+    if lines is None:
+        return img
+    
+    # # ==================================================== 可视化调试 ====================================================
+    # debug_img = img.copy()
+    # for line in lines:
+    #     x1, y1, x2, y2 = line[0]
+    #     cv2.line(debug_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+    # show_image(debug_img)
+
+    # 4. 计算所有直线的角度
+    angles = []
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        angle = degrees(atan2(y2 - y1, x2 - x1))
+        if angle > -max_angle and angle < max_angle and angle != 0:
+            angles.append(angle)
+
+    # 5. 计算最终角度
+    if not angles:
+        return img
+    angle = np.mean(angles)
+
+    print(f"文字方向矫正角度：{angle}")
+
+    # 6. 旋转图像
+    center = (img.shape[1] // 2, img.shape[0] // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_WRAP)
+
+    return rotated
+
 
 if __name__ == "__main__":
     for i in range(1, 4):
-        origin_path = f'./text_classificate/content/images/{i}.png'
-        # 旋转校正
-        rotated = correct_book_rotation(origin_path)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_rotated.png", rotated)
+        # origin_path = f'./text_classificate/content/images/{i}.png'
+        # # 旋转校正
+        # rotated = correct_book_rotation(origin_path)
+        # cv2.imwrite(f"./text_classificate/content/images/{i}_rotated.png", rotated)
 
-        # 分页处理
-        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_rotated.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_left_page.png", left_page)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_right_page.png", right_page)
+        # # 分页处理
+        # left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_rotated.png")
+        # cv2.imwrite(f"./text_classificate/content/images/{i}_left_page.png", left_page)
+        # cv2.imwrite(f"./text_classificate/content/images/{i}_right_page.png", right_page)
 
-        # 书页矫正
-        corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_left_page.png")
-        corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_right_page.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_left.png", corrected_left)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_right.png", corrected_right)
+        # # 书页矫正
+        # corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_left_page.png")
+        # corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_right_page.png")
+        # cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_left.png", corrected_left)
+        # cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_right.png", corrected_right)
 
-
+        text_corrected_left = rotate_text_image(f"./text_classificate/content/images/{i}_corrected_left.png")
+        text_corrected_right = rotate_text_image(f"./text_classificate/content/images/{i}_corrected_right.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_text_corrected_left.png", text_corrected_left)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_text_corrected_right.png", text_corrected_right)
 
         # # 识别文字
         # left_text = get_pic_text(f"./text_classificate/content/images/{i}_corrected_left.png")
