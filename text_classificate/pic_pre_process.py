@@ -415,6 +415,250 @@ def horizontal_warp_image(img, src_points):
     
     return warped
 
+
+# 书页在垂直方向上展开
+def vertical_warp_image(img, num_cells=50, k=1.3):
+    # ========== 图像预处理 ==========
+    # 预处理强化文字对比度
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.bilateralFilter(gray, 15, 75, 75)  # 保边滤波
+    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(16,16))
+    enhanced = clahe.apply(blur)
+
+    # 动态参数计算
+    h, w = img.shape[:2]
+    block_size = max(31, int(min(h,w)/15)*2+1)  # 确保足够大的窗口
+    c_value = max(7, int(min(h,w)/100))
+    
+    # 二值化强化边缘
+    thresh = cv2.adaptiveThreshold(enhanced, 255, 
+                                  cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                  cv2.THRESH_BINARY, block_size, c_value)
+
+    # 形态学重建（针对密集文字优化）
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+    closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=3)
+    opened = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=2)
+
+    # 多层轮廓分析
+    contours, hierarchy = cv2.findContours(opened, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    # 筛选有效轮廓
+    valid_contours = []
+    for i, cnt in enumerate(contours):
+        # 层级校验（仅最外层父轮廓）
+        if hierarchy[0][i][3] != -1:
+            continue
+        
+        # 几何特征校验
+        area = cv2.contourArea(cnt)
+        perimeter = cv2.arcLength(cnt, True)
+        if area < (h*w*0.5) or perimeter < (h+w)*1.5:
+            continue
+            
+        # 矩形度验证
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        box_area = cv2.contourArea(box)
+        if abs(1 - area/box_area) > 0.3:
+            continue
+            
+        valid_contours.append(cnt)
+
+    # # ==================================================== 可视化调试 ====================================================
+    # debug_img = img.copy()
+    # cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
+    # show_image(debug_img)
+
+    # ========== 处理四边界曲线 ==========
+    def extract_boundary_points(contours, img_height, threshold=0.3):
+        """提取上下边界点"""
+        upper_points = []
+        lower_points = []
+        for cnt in contours:
+            for p in cnt[:,0]:
+                if p[1] < img_height * threshold:
+                    upper_points.append(p)
+                elif p[1] > img_height * (1 - threshold):
+                    lower_points.append(p)
+        return upper_points, lower_points
+
+    def create_spline_curve(points, img_width, img_height):
+        """创建覆盖整个宽度的三次样条曲线（带严格递增校验）"""
+        if not points:
+            return lambda x: np.zeros_like(x)
+        
+        # 按x坐标排序并去重
+        points = sorted(points, key=lambda p: p[0])
+        unique_points = []
+        seen_x = set()
+        for p in reversed(points):  # 保留每个x最后出现的点
+            if p[0] not in seen_x:
+                seen_x.add(p[0])
+                unique_points.append(p)
+        unique_points = sorted(unique_points, key=lambda p: p[0])
+
+        # 提取坐标
+        x = np.array([p[0] for p in unique_points])
+        y = np.array([p[1] for p in unique_points])
+        
+        # 智能添加边界约束
+        if len(x) > 0:
+            if x[0] > 0:
+                x = np.concatenate([[0], x])
+                y = np.concatenate([[y[0]], y])
+            if x[-1] < img_width - 1:
+                x = np.concatenate([x, [img_width - 1]])
+                y = np.concatenate([y, [y[-1]]])
+        
+        # 最终校验
+        if len(x) < 2:
+            return lambda x: np.zeros_like(x)
+        
+        # 确保严格递增
+        assert np.all(np.diff(x) > 0), "x坐标必须严格递增"
+        
+        cubic_spline = CubicSpline(x, y)
+        return lambda x: np.clip(cubic_spline(x), 0, img_height)
+
+    # 提取上下边界点并创建曲线
+    h, w = img.shape[:2]
+    upper_points, lower_points = extract_boundary_points(valid_contours, h)
+
+    # # ==================================================== 可视化调试 ====================================================
+    # debug_img = img.copy()
+    # for p in upper_points:
+    #     cv2.circle(debug_img, tuple(p), 5, (0,0,255), -1)
+    # for p in lower_points:
+    #     cv2.circle(debug_img, tuple(p), 5, (255,0,0), -1)
+    # show_image(debug_img)
+
+    upper_curve = create_spline_curve(upper_points, w, h)
+    lower_curve = create_spline_curve(lower_points, w, h)
+
+    # # ==================================================== 可视化调试 ====================================================
+    # debug_img = img.copy()
+    # # 生成采样点
+    # x_samples = np.linspace(0, w-1, 2000)
+    # y_upper = upper_curve(x_samples)
+    # y_lower = lower_curve(x_samples)
+    # for x, y in zip(x_samples.astype(int), y_upper.astype(int)):
+    #     cv2.circle(debug_img, (x, y), 5, (0,0,255), -1)
+    # for x, y in zip(x_samples.astype(int), y_lower.astype(int)):
+    #     cv2.circle(debug_img, (x, y), 5, (255,0,0), -1)
+    # show_image(debug_img)
+
+    cells_output = []
+    for i in range(num_cells):
+        if i == 0:
+            cell_width = max(10, w // num_cells)  # 左侧单元格最小宽度
+            remainder = w % num_cells
+            x_left = 0
+            x_right = cell_width
+        else:
+            cell_width = w // num_cells
+            remainder = w % num_cells
+            x_left = i * cell_width + (1 if i < remainder else 0)
+            x_right = x_left + cell_width
+        
+        # 防止越界
+        x_left = max(0, x_left)
+        x_right = min(w, x_right)
+        if x_left >= x_right:
+            continue
+        
+        # 新增有效性校验
+        if x_left > w - 10 or x_right < 10:
+            print(f"Skipping edge cell {i}: {x_left}-{x_right}")
+            continue
+        
+        try:
+            # 获取边界曲线值（浮点坐标）
+            y_top_left = upper_curve(x_left)
+            y_top_right = upper_curve(x_right)
+            y_bottom_left = lower_curve(x_left)
+            y_bottom_right = lower_curve(x_right)
+        except:
+            continue  # 跳过无效单元格
+        
+        # 计算目标尺寸
+        h_left = y_bottom_left - y_top_left
+        h_right = y_bottom_right - y_top_right
+
+        target_width = sqrt(((max(h_left, h_right) - min(h_left, h_right)) * k) ** 2 + (x_right - x_left) ** 2)
+        target_height = max(h_left, h_right)
+
+        # print(f"Cell {i}: {x_left}-{x_right}, {y_top_left}-{y_bottom_left} / {y_top_right}-{y_bottom_right}")
+        # print(f"\tTarget size: {target_width} x {target_height}")
+        
+        if target_height <= 1e-9 or target_width <= 1e-9:
+            continue  # 忽略无效变换
+        
+        # 定义源点和目标点（浮点坐标）
+        src = [
+            (x_left, y_top_left),
+            (x_right, y_top_right),
+            (x_right, y_bottom_right),
+            (x_left, y_bottom_left)
+        ]
+
+        dst = [
+            (0.0, 0.0),
+            (target_width, 0.0),
+            (target_width, target_height),
+            (0.0, target_height)
+        ]
+        
+        # 提取原始单元格区域（整数坐标）
+        cell_region = img[0:h, x_left:x_right]
+        # 可视化调试
+        # show_image(cell_region)
+        
+        # 计算变换矩阵
+        src = np.array(src, dtype=np.float32)
+        dst = np.array(dst, dtype=np.float32)
+        matrix = cv2.getPerspectiveTransform(src, dst)
+
+        # 动态选择插值方法
+        if target_width > cell_region.shape[1]:
+            warp_method = cv2.INTER_CUBIC  # 放大时使用三次插值
+        else:
+            warp_method = cv2.INTER_AREA   # 缩小时使用面积插值
+        
+        # 应用透视变换并验证有效性
+        try:
+            # print(f"\nProcessing cell {i}: x_left={x_left}, x_right={x_right}")
+            # print(f"  src:\n{src}, \ndst:\n{dst}")
+            # print(f"  matrix:\n{matrix}")
+            
+            warped = cv2.warpPerspective(cell_region, matrix, (int(target_width), int(target_height)), flags=warp_method, borderMode=cv2.BORDER_WRAP)
+            # warped = cv2.warpPerspective(cell_region, matrix, (int(target_width), int(target_height)), flags=warp_method)
+            # show_image(warped)
+        except cv2.error as e:
+            print(f"\nWarp failed for cell {i}:\n{str(e)}")
+            continue
+        
+
+        if warped.size == 0 or warped.shape[0] <= 0 or warped.shape[1] <= 0:
+            continue  # 跳过无效图像
+        cells_output.append(warped)
+    
+    # 统一拉伸所有单元格到基准高度
+    if not cells_output:
+        return img
+    base_h = cells_output[0].shape[0]
+    for i in range(len(cells_output)):
+        curr_h = cells_output[i].shape[0]
+        if curr_h != base_h:
+            # 保持宽度不变，仅调整高度
+            cells_output[i] = cv2.resize(cells_output[i], 
+                                    (cells_output[i].shape[1], base_h),
+                                    interpolation=cv2.INTER_AREA)
+    
+    # 拼接处理后的单元格
+    final_image = cv2.hconcat(cells_output) if cells_output else img
+    return final_image
+
 # 书页矫正主函数
 def book_page_rectifier(img_path):
     img = cv2.imread(img_path)
@@ -437,9 +681,12 @@ def book_page_rectifier(img_path):
 
     horizontal_img =  horizontal_warp_image(img, corners)
 
-    # show_image(horizontal_img)
+    vertical_img = vertical_warp_image(horizontal_img)
 
-    return horizontal_img
+    # show_image(horizontal_img)
+    # show_image(vertical_img)
+
+    return vertical_img
 
 
 if __name__ == "__main__":
@@ -459,3 +706,11 @@ if __name__ == "__main__":
         corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_right_page.png")
         cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_left.png", corrected_left)
         cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_right.png", corrected_right)
+
+
+
+        # # 识别文字
+        # left_text = get_pic_text(f"./text_classificate/content/images/{i}_corrected_left.png")
+        # right_text = get_pic_text(f"./text_classificate/content/images/{i}_corrected_right.png")
+        # print(f"左页文字识别结果：{left_text}")
+        # print(f"右页文字识别结果：{right_text}")
