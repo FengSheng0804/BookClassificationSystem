@@ -120,6 +120,175 @@ def correct_book_rotation(img_path):
 
     return rotated_after
 
+# ===============================================分页处理+分界线倾斜矫正===============================================
+# 选择最佳分界点
+def find_vertical_spine_points(points, img_center, vertical_margin=0.1):
+    """
+    寻找垂直中缝的上下端点
+    :param points: 候选角点集合 (N,2)
+    :param img_center: 图像中心坐标 (cx, cy)
+    :param vertical_margin: 垂直方向中间区域比例
+    :return: (upper_point, lower_point)
+    """
+    cx, cy = img_center
+    img_width = 2 * cx
+
+    # 筛选位于垂直中线附近的点（宽度10%范围内）
+    vertical_points = [p for p in points if abs(p[0] - cx) < img_width * 0.05]
+
+    if len(vertical_points) < 2:
+        # 降级处理：选择x坐标最接近中心的两个点
+        vertical_points = sorted(points, key=lambda p: abs(p[0] - cx))[:2]
+
+    # 按垂直位置排序
+    sorted_points = sorted(vertical_points, key=lambda p: p[1])
+    
+    # 确定中间区域边界
+    upper_bound = cy * (1 - vertical_margin)
+    lower_bound = cy * (1 + vertical_margin)
+
+    # 选择中间区域最上/下的点
+    upper_candidates = [p for p in sorted_points if p[1] < upper_bound]
+    lower_candidates = [p for p in sorted_points if p[1] > lower_bound]
+
+    upper = min(upper_candidates, key=lambda p: p[1]) if upper_candidates else sorted_points[0]
+    lower = max(lower_candidates, key=lambda p: p[1]) if lower_candidates else sorted_points[-1]
+
+    return upper, lower
+
+# 计算旋转角度
+def find_vertical_spine_points(points, img_size):
+    """
+    检测垂直中缝的上下端点
+    :param points: 候选角点集合 (N,2)
+    :param img_size: 图像尺寸 (width, height)
+    :return: (upper_point, lower_point)
+    """
+    w, h = img_size
+    center_x = w // 2
+    
+    # 筛选位于垂直中线附近15%区域的点
+    vertical_mask = (points[:,0] > center_x - w*0.075) & (points[:,0] < center_x + w*0.075)
+    vertical_points = points[vertical_mask]
+    
+    # 降级处理：若无足够点，选择x最接近中心的2个点
+    if len(vertical_points) < 2:
+        vertical_points = sorted(points, key=lambda p: abs(p[0]-center_x))[:2]
+    
+    # 按垂直位置排序并选择上下端点
+    sorted_points = sorted(vertical_points, key=lambda p: p[1])
+    return sorted_points[0], sorted_points[-1]
+
+# 计算旋转角度
+def calculate_rotation_angle(upper, lower):
+    """计算需要旋转到垂直的角度"""
+    dx = lower[0] - upper[0]
+    dy = lower[1] - upper[1]
+    current_angle = degrees(atan2(dy, dx))
+    return current_angle - 90  # 调整到垂直方向
+
+# 书页分割
+def find_book_corners_and_split(img_path):
+    # ========== 1. 图像预处理 ==========
+    img = cv2.imread(img_path)
+    h, w = img.shape[:2]
+    
+    # 多尺度预处理
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.bilateralFilter(gray, 9, 30, 30)
+    edges = cv2.Canny(blur, 30, 100)
+    
+    # 形态学强化轮廓
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+    dilated = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=2)
+
+    # ========== 2. 轮廓提取与处理 ==========
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise ValueError("未检测到有效轮廓")
+    
+    main_contour = max(contours, key=cv2.contourArea)
+    points = np.squeeze(main_contour, axis=1)
+
+    # ========== 3. 候选角点检测 ==========
+    def curvature_angle(points, idx, window=15):
+        """改进的曲率角度检测"""
+        prev = points[max(0, idx-window):idx]
+        next = points[idx:min(len(points), idx+window)]
+        
+        if len(prev)<2 or len(next)<2:
+            return 180
+        
+        v1 = np.mean(prev[-2:] - prev[-1], axis=0)
+        v2 = np.mean(next[:2] - next[0], axis=0)
+        dot = v1[0]*v2[0] + v1[1]*v2[1]
+        mod = np.linalg.norm(v1) * np.linalg.norm(v2)
+        return degrees(np.arccos(dot/(mod + 1e-7)))
+
+    candidates = []
+    window_size = max(15, int(0.005 * len(points)))
+    for i in range(len(points)):
+        if 80 < curvature_angle(points, i, window_size) < 100:  # 严格直角范围
+            candidates.append(points[i])
+    
+    # ========== 4. 角点聚类筛选 ==========
+    clustering = DBSCAN(eps=w*0.03, min_samples=3).fit(candidates)
+    labels = clustering.labels_
+    
+    # 提取有效聚类中心
+    cluster_centers = []
+    for label in set(labels):
+        if label == -1: continue
+        cluster = np.array(candidates)[labels == label]
+        cluster_centers.append(np.median(cluster, axis=0))
+    
+    # 按垂直位置排序
+    final_corners = sorted(cluster_centers, key=lambda p: p[1])
+
+    # ========== 5. 中缝检测与旋转 ==========
+    try:
+        upper, lower = find_vertical_spine_points(np.array(final_corners), (w, h))
+    except:
+        # 降级处理：使用轮廓极值点
+        upper = points[points[:,1].argmin()]
+        lower = points[points[:,1].argmax()]
+
+    rotate_angle = calculate_rotation_angle(upper, lower)
+    
+    # 执行旋转
+    M = cv2.getRotationMatrix2D((w//2, h//2), rotate_angle, 1)
+    rotated = cv2.warpAffine(img, M, (w, h), flags=cv2.INTER_CUBIC)
+
+    # ========== 6. 精确分页 ==========
+    # 计算旋转后的中缝位置
+    pts = np.array([upper, lower], dtype=np.float32).reshape(-1,1,2)
+    rotated_pts = cv2.transform(pts, M).squeeze()
+    
+    # 取x坐标中值并限制范围
+    split_x = int(np.median(rotated_pts[:,0]))
+    split_x = np.clip(split_x, int(w*0.45), int(w*0.55))
+
+    # 分割与边框处理
+    border = 15
+    left = cv2.copyMakeBorder(rotated[:, :split_x], border, border, border, border,
+                            cv2.BORDER_CONSTANT, value=(0,0,0))
+    right = cv2.copyMakeBorder(rotated[:, split_x:], border, border, border, border,
+                             cv2.BORDER_CONSTANT, value=(0,0,0))
+
+    # # ==================================================== 可视化调试 ====================================================
+    # debug_img = img.copy()
+    # for pt in final_corners:
+    #     cv2.circle(debug_img, tuple(pt.astype(int)), 10, (0,0,255), -1)
+    # for pt in candidates:
+    #     cv2.circle(debug_img, tuple(pt.astype(int)), 5, (0,255,0), -1)
+    # cv2.line(debug_img, tuple(upper.astype(int)), tuple(lower.astype(int)),
+    #         (255,0,0), 3)
+    # cv2.putText(debug_img, f"Rotate: {rotate_angle:.2f}°", (20,40),
+    #            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 4)
+
+    # show_image(debug_img)
+
+    return left, right
 
 if __name__ == "__main__":
     for i in range(1, 4):
@@ -127,3 +296,8 @@ if __name__ == "__main__":
         # 旋转校正
         rotated = correct_book_rotation(origin_path)
         cv2.imwrite(f"./text_classificate/content/images/{i}_rotated.png", rotated)
+
+        # 分页处理
+        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_rotated.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_left_page.png", left_page)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_right_page.png", right_page)
