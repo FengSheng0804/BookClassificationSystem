@@ -916,47 +916,47 @@ def get_text_block(img_path, black_tolerance=0.05):
 
 if __name__ == "__main__":
     for i in range(1, 4):
-        origin_path = f'./text_classificate/content/images/{i}.png'
+        origin_path = f'./text_classificate/content/images/{i}_.png'
 
         # 旋转校正
-        print(f"开始旋转校正{i}.png...")
+        print(f"开始旋转校正{i}_.png...")
         rotated = correct_book_rotation(origin_path)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_rotated.png", rotated)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_1_rotated.png", rotated)
 
         # 分页处理
-        print(f"开始分页处理{i}_rotated.png...")
-        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_rotated.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_left_page.png", left_page)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_right_page.png", right_page)
+        print(f"开始分页处理{i}_1_rotated.png...")
+        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_1_rotated.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_2_left_page.png", left_page)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_2_right_page.png", right_page)
 
         # 书页矫正
-        print(f"开始书页矫正{i}_left_page.png...")
-        corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_left_page.png")
-        print(f"开始书页矫正{i}_right_page.png...")
-        corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_right_page.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_left.png", corrected_left)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_right.png", corrected_right)
+        print(f"开始书页矫正{i}_2_left_page.png...")
+        corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_2_left_page.png")
+        print(f"开始书页矫正{i}_2_right_page.png...")
+        corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_2_right_page.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_3_corrected_left.png", corrected_left)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_3_corrected_right.png", corrected_right)
 
         # 文字方向矫正
-        print(f"开始文字方向矫正{i}_corrected_left.png...")
-        text_corrected_left = rotate_text_image(f"./text_classificate/content/images/{i}_corrected_left.png")
-        print(f"开始文字方向矫正{i}_corrected_right.png...")
-        text_corrected_right = rotate_text_image(f"./text_classificate/content/images/{i}_corrected_right.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_text_corrected_left.png", text_corrected_left)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_text_corrected_right.png", text_corrected_right)
+        print(f"开始文字方向矫正{i}_3_corrected_left.png...")
+        text_corrected_left = rotate_text_image(f"./text_classificate/content/images/{i}_3_corrected_left.png")
+        print(f"开始文字方向矫正{i}_3_corrected_right.png...")
+        text_corrected_right = rotate_text_image(f"./text_classificate/content/images/{i}_3_corrected_right.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_4_text_corrected_left.png", text_corrected_left)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_4_text_corrected_right.png", text_corrected_right)
 
         # 文字区域切割
-        print(f"开始文字区域切割{i}_text_corrected_left.png...")
-        text_block_left = get_text_block(f"./text_classificate/content/images/{i}_text_corrected_left.png")
-        print(f"开始文字区域切割{i}_text_corrected_right.png...")
-        text_block_right = get_text_block(f"./text_classificate/content/images/{i}_text_corrected_right.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_text_block_left.png", text_block_left)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_text_block_right.png", text_block_right)
+        print(f"开始文字区域切割{i}_4_text_corrected_left.png...")
+        text_block_left = get_text_block(f"./text_classificate/content/images/{i}_4_text_corrected_left.png")
+        print(f"开始文字区域切割{i}_4_text_corrected_right.png...")
+        text_block_right = get_text_block(f"./text_classificate/content/images/{i}_4_text_corrected_right.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_5_text_block_left.png", text_block_left)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_5_text_block_right.png", text_block_right)
 
         # # 识别文字
-        # print(f"开始文字识别{i}_text_block_left.png...")
-        # left_text = get_pic_text(f"./text_classificate/content/images/{i}_text_block_left.png")
+        # print(f"开始文字识别{i}_5_text_block_left.png...")
+        # left_text = get_pic_text(f"./text_classificate/content/images/{i}_5_text_block_left.png")
         # print(f"左页文字识别结果：{left_text}")
-        # print(f"开始文字识别{i}_text_block_right.png...")
-        # right_text = get_pic_text(f"./text_classificate/content/images/{i}_text_block_right.png")
+        # print(f"开始文字识别{i}_5_text_block_right.png...")
+        # right_text = get_pic_text(f"./text_classificate/content/images/{i}_5_text_block_right.png")
         # print(f"右页文字识别结果：{right_text}")
