@@ -3,9 +3,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-from math import atan, atan2, degrees, sqrt
+from math import atan2, degrees, sqrt
 import pytesseract
-from pytesseract import Output
 from sklearn.cluster import DBSCAN
 from scipy.interpolate import CubicSpline
 from dataset_get.pic_to_text_by_OCR import get_pic_text
@@ -59,7 +58,7 @@ def show_image(img):
     plt.axis('off')
     plt.show()
 
-# ===============================================裁剪黑边+图像倾斜纠正+===============================================
+# =========================裁剪黑边+图像倾斜纠正=========================
 # 自动裁剪黑边
 def auto_remove_black_border(img):
     """基于内容检测自动裁剪黑边"""
@@ -92,9 +91,7 @@ def correct_book_rotation(img_path):
                                   cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                   cv2.THRESH_BINARY_INV, 21, 10)
     
-    edges = cv2.Canny(blur, 50, 150)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-    dilated = cv2.dilate(edges, kernel, iterations=3)
     gradient = cv2.morphologyEx(thresh, cv2.MORPH_GRADIENT, kernel)
 
     # 3. 查找轮廓
@@ -122,7 +119,7 @@ def correct_book_rotation(img_path):
 
     return rotated_after
 
-# ===============================================分页处理+分界线倾斜矫正===============================================
+# =========================分页处理+分界线倾斜矫正=========================
 # 选择最佳分界点
 def find_vertical_spine_points(points, img_center, vertical_margin=0.1):
     """
@@ -135,21 +132,21 @@ def find_vertical_spine_points(points, img_center, vertical_margin=0.1):
     cx, cy = img_center
     img_width = 2 * cx
 
-    # 筛选位于垂直中线附近的点（宽度10%范围内）
+    # ========== 1. 筛选位于垂直中线附近的点（宽度10%范围内） ==========
     vertical_points = [p for p in points if abs(p[0] - cx) < img_width * 0.05]
 
     if len(vertical_points) < 2:
         # 降级处理：选择x坐标最接近中心的两个点
         vertical_points = sorted(points, key=lambda p: abs(p[0] - cx))[:2]
 
-    # 按垂直位置排序
+    # ========== 2. 按垂直位置排序 ==========
     sorted_points = sorted(vertical_points, key=lambda p: p[1])
     
-    # 确定中间区域边界
+    # ========== 3. 确定中间区域边界 ==========
     upper_bound = cy * (1 - vertical_margin)
     lower_bound = cy * (1 + vertical_margin)
 
-    # 选择中间区域最上/下的点
+    # ========== 4.选择中间区域最上/下的点 ==========
     upper_candidates = [p for p in sorted_points if p[1] < upper_bound]
     lower_candidates = [p for p in sorted_points if p[1] > lower_bound]
 
@@ -169,15 +166,15 @@ def find_vertical_spine_points(points, img_size):
     w, h = img_size
     center_x = w // 2
     
-    # 筛选位于垂直中线附近15%区域的点
+    # ========== 1. 筛选位于垂直中线附近15%区域的点 ==========
     vertical_mask = (points[:,0] > center_x - w*0.075) & (points[:,0] < center_x + w*0.075)
     vertical_points = points[vertical_mask]
     
-    # 降级处理：若无足够点，选择x最接近中心的2个点
+    # ========== 2. 降级处理：若无足够点，选择x最接近中心的2个点 ==========
     if len(vertical_points) < 2:
         vertical_points = sorted(points, key=lambda p: abs(p[0]-center_x))[:2]
     
-    # 按垂直位置排序并选择上下端点
+    # ========== 3. 按垂直位置排序并选择上下端点 ==========
     sorted_points = sorted(vertical_points, key=lambda p: p[1])
     return sorted_points[0], sorted_points[-1]
 
@@ -277,7 +274,7 @@ def find_book_corners_and_split(img_path):
     right = cv2.copyMakeBorder(rotated[:, split_x:], border, border, border, border,
                              cv2.BORDER_CONSTANT, value=(0,0,0))
 
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # debug_img = img.copy()
     # for pt in final_corners:
     #     cv2.circle(debug_img, tuple(pt.astype(int)), 10, (0,0,255), -1)
@@ -292,8 +289,7 @@ def find_book_corners_and_split(img_path):
 
     return left, right
 
-# ===============================================水平矫正+垂直矫正===============================================
-
+# =========================水平矫正+垂直矫正=========================
 # 得到有序的四个角点
 def order_points(pts):
     rect = np.zeros((4, 2), dtype="float32")
@@ -307,6 +303,7 @@ def order_points(pts):
 
 # 自动查找书页四个角点
 def auto_detect_page_corners(img):
+    # ========== 1. 图像预处理 ==========
     # 预处理强化文字对比度
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.bilateralFilter(gray, 15, 75, 75)  # 保边滤波
@@ -328,7 +325,7 @@ def auto_detect_page_corners(img):
     closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=3)
     opened = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=2)
 
-    # 多层轮廓分析
+    # ========== 2. 轮廓提取与处理 ==========
     contours, hierarchy = cv2.findContours(opened, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     
     # 筛选有效轮廓
@@ -353,7 +350,7 @@ def auto_detect_page_corners(img):
             
         valid_contours.append(cnt)
 
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # cv2.drawContours(img, valid_contours, -1, (0,255,0), 4)
     # show_image(img)
 
@@ -363,7 +360,7 @@ def auto_detect_page_corners(img):
         
     page_contour = max(valid_contours, key=cv2.contourArea)
 
-    # 亚像素级角点精修
+    # ========== 3. 亚像素级角点精修 ==========
     epsilon = 0.01 * cv2.arcLength(page_contour, True)
     approx = cv2.approxPolyDP(page_contour, epsilon, True)
     corners = cv2.cornerSubPix(gray, np.float32(approx.reshape(-1,2)), 
@@ -387,16 +384,16 @@ def auto_detect_page_corners(img):
 
 # 透视变换
 def horizontal_warp_image(img, src_points):
-# 坐标排序验证
+    # ========== 1. 坐标排序验证 ==========
     if src_points.shape != (4, 2):
         raise ValueError("必须提供4个二维坐标点")
 
-    # 智能尺寸计算
+    # ========== 2. 智能尺寸计算 ==========
     (tl, tr, br, bl) = src_points
     width = max(np.linalg.norm(tr - tl), np.linalg.norm(br - bl))
     height = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))
 
-    # 构建目标矩形（上下严格等宽）
+    # ========== 3. 构建目标矩形（上下严格等宽） ==========
     dst = np.array([
         [0, 0],
         [width - 1, 0],  # 确保不越界
@@ -404,10 +401,10 @@ def horizontal_warp_image(img, src_points):
         [0, height - 1]
     ], dtype="float32")
 
-    # 计算变换矩阵
+    # ========== 4. 计算变换矩阵 ==========
     M = cv2.getPerspectiveTransform(src_points, dst)
     
-    # 执行变换（带抗锯齿处理）
+    # ========== 5. 执行变换（带抗锯齿处理） ==========
     warped = cv2.warpPerspective(
         img, M, 
         (int(width), int(height)),
@@ -420,7 +417,7 @@ def horizontal_warp_image(img, src_points):
 
 # 书页在垂直方向上展开
 def vertical_warp_image(img, num_cells=30, k=1.3):
-    # ========== 图像预处理 ==========
+    # ========== 1. 图像预处理 ==========
     # 预处理强化文字对比度
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.bilateralFilter(gray, 15, 75, 75)  # 保边滤波
@@ -467,12 +464,12 @@ def vertical_warp_image(img, num_cells=30, k=1.3):
             
         valid_contours.append(cnt)
 
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # debug_img = img.copy()
     # cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
     # show_image(debug_img)
 
-    # ========== 处理四边界曲线 ==========
+    # ========== 2. 处理四边界曲线 ==========
     def extract_boundary_points(contours, img_height, threshold=0.3):
         """提取上下边界点"""
         upper_points = []
@@ -527,7 +524,7 @@ def vertical_warp_image(img, num_cells=30, k=1.3):
     h, w = img.shape[:2]
     upper_points, lower_points = extract_boundary_points(valid_contours, h)
 
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # debug_img = img.copy()
     # for p in upper_points:
     #     cv2.circle(debug_img, tuple(p), 5, (0,0,255), -1)
@@ -538,7 +535,7 @@ def vertical_warp_image(img, num_cells=30, k=1.3):
     upper_curve = create_spline_curve(upper_points, w, h)
     lower_curve = create_spline_curve(lower_points, w, h)
 
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # debug_img = img.copy()
     # # 生成采样点
     # x_samples = np.linspace(0, w-1, 2000)
@@ -550,6 +547,7 @@ def vertical_warp_image(img, num_cells=30, k=1.3):
     #     cv2.circle(debug_img, (x, y), 5, (255,0,0), -1)
     # show_image(debug_img)
 
+    # ========== 3. 单元格处理 ==========
     cells_output = []
     for i in range(num_cells):
         if i == 0:
@@ -667,7 +665,7 @@ def book_page_rectifier(img_path):
     # 获取浮点型坐标（例如：[[123.4, 56.7], ...]）
     corners = auto_detect_page_corners(img)  
 
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # # 转换为整数坐标
     # int_corners = corners.astype(int)
     # debug_img = img.copy()
@@ -681,50 +679,52 @@ def book_page_rectifier(img_path):
     #             tuple(int_corners[(i+1)%4]), (0,255,0), 4)
     # show_image(debug_img)
 
+    # ========== 1. 水平方向矫正 ==========
     horizontal_img =  horizontal_warp_image(img, corners)
 
+    # ========== 2. 垂直方向矫正 ==========
     vertical_img = vertical_warp_image(horizontal_img)
 
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # show_image(horizontal_img)
     # show_image(vertical_img)
 
     return vertical_img
 
-# ===============================================文字方向矫正===============================================
+# =========================文字方向矫正=========================
 def rotate_text_image(img_path, max_angle=10):
     img = cv2.imread(img_path)
-    # 1. 灰度化 + 高斯降噪
+    # ========== 1. 灰度化 + 高斯降噪 ==========
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (7, 7), 0)
 
-    # 2. 自适应阈值分割
+    # ========== 2. 自适应阈值分割 ==========
     thresh = cv2.adaptiveThreshold(blurred, 255, 
                                 cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                 cv2.THRESH_BINARY_INV, 21, 10)
 
     # show_image(thresh)
 
-    # 3. 形态学操作（连接字符间隙+去除孤立噪声）
+    # ========== 3. 形态学操作（连接字符间隙+去除孤立噪声） ==========
     kernel = np.ones((3, 3), np.uint8)
     cleaned = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
     cleaned = cv2.dilate(cleaned, kernel, iterations=5)
 
     # show_image(cleaned)
 
-    # 霍夫直线检测
+    # ========== 4. 霍夫直线检测 ==========
     lines = cv2.HoughLinesP(cleaned, 1, np.pi / 180, 200, minLineLength=200, maxLineGap=3)
     if lines is None:
         return img
     
-    # # ==================================================== 可视化调试 ====================================================
+    # # ==================================== 可视化调试 ====================================
     # debug_img = img.copy()
     # for line in lines:
     #     x1, y1, x2, y2 = line[0]
     #     cv2.line(debug_img, (x1, y1), (x2, y2), (0, 0, 255), 2)
     # show_image(debug_img)
 
-    # 4. 计算所有直线的角度
+    # ========== 5. 计算所有直线的角度 ==========
     angles = []
     for line in lines:
         x1, y1, x2, y2 = line[0]
@@ -732,46 +732,231 @@ def rotate_text_image(img_path, max_angle=10):
         if angle > -max_angle and angle < max_angle and angle != 0:
             angles.append(angle)
 
-    # 5. 计算最终角度
+    # ========== 6. 计算最终角度 ==========
     if not angles:
         return img
     angle = np.mean(angles)
 
-    print(f"文字方向矫正角度：{angle}")
+    # print(f"文字方向矫正角度：{angle}")
 
-    # 6. 旋转图像
+    # ========== 7. 旋转图像 ==========
     center = (img.shape[1] // 2, img.shape[0] // 2)
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_WRAP)
+
+    # 这里使用BORDER_REFLECT填充边界，避免黑边导致后面对文本区域进行分割时出现顶部有凸起的问题
+    rotated = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
 
     return rotated
 
+# =========================文字内容切割=========================
+# 获取文字块
+def get_text_block(img_path, black_tolerance=0.05):   
+    img = cv2.imread(img_path)
+    
+    # ========== 1. 灰度化 + 高斯降噪 ==========
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (15, 15), 0)
+
+    # ========== 2. 自适应阈值分割 ==========
+    thresh = cv2.adaptiveThreshold(blurred, 255, 
+                                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                cv2.THRESH_BINARY_INV, 21, 10)
+
+    # ========== 3. 形态学操作（连接字符间隙+去除孤立噪声） ==========
+    kernel = np.ones((3, 3), np.uint8)
+    cleaned = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    cleaned = cv2.dilate(cleaned, kernel, iterations=25)
+
+    # ========== 4. 边缘保护处理 ==========
+    border_size = 20
+    cleaned[:border_size, :] = 0  # 上边缘
+    cleaned[-border_size:, :] = 0  # 下边缘
+    cleaned[:, :border_size] = 0  # 左边缘
+    cleaned[:, -border_size:] = 0  # 右边缘
+
+    # ========== 5. 轮廓检测 ==========
+    contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # 有效性验证（面积阈值调整为5%）
+    valid_contours = []
+    for cnt in contours:
+        if len(cnt) >= 5:
+            area = cv2.contourArea(cnt)
+            if area > img.shape[0]*img.shape[1]*0.05:  # 修改为5%
+                valid_contours.append(cnt)
+    
+    if not valid_contours:
+        raise ValueError("未检测到有效轮廓")
+    
+    # ========== 6. 执行局部异常凸起检测算法 ==========
+    repaired_contours = []
+    for cnt in valid_contours:
+        try:
+            # 6.1 前置检查
+            if len(cnt) < 4:  # 至少需要4个点才能形成有效轮廓
+                repaired_contours.append(cnt)
+                continue
+
+            # 6.2 类型转换与凸包计算
+            cnt = cnt.astype(np.int32)
+            hull_indices = cv2.convexHull(cnt, returnPoints=False)
+            
+            if hull_indices is None or len(hull_indices) < 3:
+                print("凸包计算失败，保留原始轮廓")
+                repaired_contours.append(cnt)
+                continue
+
+            # 6.3 凸性缺陷检测
+            defects = cv2.convexityDefects(cnt, hull_indices)
+            if defects is None:
+                print("凸性缺陷检测失败，保留原始轮廓")
+                repaired_contours.append(cnt)
+                continue
+
+            # 6.4 缺陷点分析
+            defect_segments = []
+            for i in range(defects.shape[0]):
+                s, e, f, d = defects[i, 0]
+                # 索引有效性验证
+                if all(0 <= x < len(cnt) for x in [s, e, f]):
+                    distance = d / 256.0
+                    if distance > 50:  # 凸起敏感度阈值（可调参数）
+                        start = tuple(cnt[s][0])
+                        end = tuple(cnt[e][0])
+                        far = tuple(cnt[f][0])
+                        print(f"检测到凸起缺陷：{start} -> {end} (Far: {far}, Distance: {distance})")
+                        defect_segments.append( (start, end, far) )
+
+            # 6.5 无显著缺陷则跳过
+            if not defect_segments:
+                print("未检测到有效凸起缺陷")
+                repaired_contours.append(cnt)
+                continue
+
+            # 6.6 轮廓修复处理
+            contour_points = cnt.squeeze()
+            mask = np.ones(len(contour_points), dtype=bool)
+
+            # 创建坐标查找字典（加速匹配）
+            coord_dict = {(x, y): idx for idx, (x, y) in enumerate(contour_points)}
+
+            for s_p, e_p, f_p in defect_segments:
+                # 使用容差匹配查找索引（±2像素范围）
+                # start_index: 起始点索引，end_index: 结束点索引，分别表示凸起段的起始和结束
+                start_idx = next( (coord_dict.get((x,y)) for x in range(s_p[0]-2, s_p[0]+3) 
+                                 for y in range(s_p[1]-2, s_p[1]+3) if (x,y) in coord_dict), None)
+                end_idx = next( (coord_dict.get((x,y)) for x in range(e_p[0]-2, e_p[0]+3) 
+                               for y in range(e_p[1]-2, e_p[1]+3) if (x,y) in coord_dict), None)
+
+                if start_idx is None or end_idx is None:
+                    continue
+
+                # 标记需要删除的点（保留端点）
+                if start_idx < end_idx:
+                    mask[start_idx+1:end_idx] = False
+                else:
+                    mask[start_idx+1:] = False
+                    mask[:end_idx] = False
+
+            # 保留有效点
+            preserved_points = contour_points[mask]
+
+            # 6.7 凸包段插入
+            for s_p, e_p, _ in defect_segments:
+                # 生成凸包连接段
+                segment_points = np.array([s_p, e_p], dtype=np.int32)
+                hull_segment = cv2.convexHull(segment_points).squeeze()
+
+                # 查找插入位置
+                try:
+                    insert_pos = np.where((preserved_points == s_p).all(axis=1))[0][0]
+                    # 插入凸包点（排除重复端点）
+                    preserved_points = np.insert(
+                        preserved_points,
+                        insert_pos + 1,
+                        hull_segment[1:-1],
+                        axis=0
+                    )
+                except IndexError:
+                    continue
+
+            # 6.8 生成最终轮廓
+            repaired_cnt = preserved_points.reshape(-1, 1, 2).astype(np.int32)
+            repaired_contours.append(repaired_cnt)
+
+        except Exception as e:
+            print(f"轮廓处理异常: {str(e)}，保留原始轮廓")
+            repaired_contours.append(cnt)
+
+    # ========== 7. 主区域合并逻辑 ==========
+    if repaired_contours:
+        # 合并所有有效轮廓的坐标点
+        merged_points = np.vstack(repaired_contours)
+        x, y, w, h = cv2.boundingRect(merged_points)
+    else:
+        h, w = img.shape[:2]
+        x, y = int(w*0.1), int(h*0.1)
+        w, h = int(w*0.8), int(h*0.8)
+    
+    # 安全边界扩展
+    x = max(0, x-10)
+    y = max(0, y-10)
+    w = min(img.shape[1]-x, w+20)
+    h = min(img.shape[0]-y, h+20)
+
+    # ========== 8. 最终裁剪与验证 ==========
+    cropped = img[y:y+h, x:x+w]
+    gray_cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    black_ratio = np.sum(gray_cropped < 50) / gray_cropped.size
+    
+    if black_ratio > black_tolerance:
+        print(f"警告：黑色区域占比 {black_ratio:.2%}，超过阈值 {black_tolerance}")
+    
+    return cropped
 
 if __name__ == "__main__":
     for i in range(1, 4):
-        # origin_path = f'./text_classificate/content/images/{i}.png'
-        # # 旋转校正
-        # rotated = correct_book_rotation(origin_path)
-        # cv2.imwrite(f"./text_classificate/content/images/{i}_rotated.png", rotated)
+        origin_path = f'./text_classificate/content/images/{i}.png'
 
-        # # 分页处理
-        # left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_rotated.png")
-        # cv2.imwrite(f"./text_classificate/content/images/{i}_left_page.png", left_page)
-        # cv2.imwrite(f"./text_classificate/content/images/{i}_right_page.png", right_page)
+        # 旋转校正
+        print(f"开始旋转校正{i}.png...")
+        rotated = correct_book_rotation(origin_path)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_rotated.png", rotated)
 
-        # # 书页矫正
-        # corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_left_page.png")
-        # corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_right_page.png")
-        # cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_left.png", corrected_left)
-        # cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_right.png", corrected_right)
+        # 分页处理
+        print(f"开始分页处理{i}_rotated.png...")
+        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_rotated.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_left_page.png", left_page)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_right_page.png", right_page)
 
+        # 书页矫正
+        print(f"开始书页矫正{i}_left_page.png...")
+        corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_left_page.png")
+        print(f"开始书页矫正{i}_right_page.png...")
+        corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_right_page.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_left.png", corrected_left)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_corrected_right.png", corrected_right)
+
+        # 文字方向矫正
+        print(f"开始文字方向矫正{i}_corrected_left.png...")
         text_corrected_left = rotate_text_image(f"./text_classificate/content/images/{i}_corrected_left.png")
+        print(f"开始文字方向矫正{i}_corrected_right.png...")
         text_corrected_right = rotate_text_image(f"./text_classificate/content/images/{i}_corrected_right.png")
         cv2.imwrite(f"./text_classificate/content/images/{i}_text_corrected_left.png", text_corrected_left)
         cv2.imwrite(f"./text_classificate/content/images/{i}_text_corrected_right.png", text_corrected_right)
 
+        # 文字区域切割
+        print(f"开始文字区域切割{i}_text_corrected_left.png...")
+        text_block_left = get_text_block(f"./text_classificate/content/images/{i}_text_corrected_left.png")
+        print(f"开始文字区域切割{i}_text_corrected_right.png...")
+        text_block_right = get_text_block(f"./text_classificate/content/images/{i}_text_corrected_right.png")
+        cv2.imwrite(f"./text_classificate/content/images/{i}_text_block_left.png", text_block_left)
+        cv2.imwrite(f"./text_classificate/content/images/{i}_text_block_right.png", text_block_right)
+
         # # 识别文字
-        # left_text = get_pic_text(f"./text_classificate/content/images/{i}_corrected_left.png")
-        # right_text = get_pic_text(f"./text_classificate/content/images/{i}_corrected_right.png")
+        # print(f"开始文字识别{i}_text_block_left.png...")
+        # left_text = get_pic_text(f"./text_classificate/content/images/{i}_text_block_left.png")
         # print(f"左页文字识别结果：{left_text}")
+        # print(f"开始文字识别{i}_text_block_right.png...")
+        # right_text = get_pic_text(f"./text_classificate/content/images/{i}_text_block_right.png")
         # print(f"右页文字识别结果：{right_text}")
