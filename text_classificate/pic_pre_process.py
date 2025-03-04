@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from math import atan2, degrees, sqrt
-import pytesseract
+from itertools import combinations
 from sklearn.cluster import DBSCAN
 from scipy.interpolate import CubicSpline
 from dataset_get.pic_to_text_by_OCR import get_pic_text
@@ -39,18 +39,19 @@ def binarize_image(image_path, threshold=128):
 
     return binary_image
 
-# 获取摄像头图像
-def get_picture():
-    # 显示摄像头的图像
-    cap = cv2.VideoCapture(0)
-    while True:
-        ret, frame = cap.read()
-        cv2.imshow("frame", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        # 如果按下s键，保存图像
-        if cv2.waitKey(1) & 0xFF == ord('s'):
-            cv2.imwrite("./frame.png", frame)
+# OCR前预处理图片
+def process_before_OCR(image):
+    # 灰度化
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # 降噪
+    blurred = cv2.GaussianBlur(gray, (5,5), 0)
+    # 自适应二值化
+    binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, 7)
+    # 形态学操作
+    kernel = np.ones((2,2), np.uint8)
+    processed = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    return processed
 
 # 显示图像
 def show_image(img):
@@ -748,7 +749,7 @@ def rotate_text_image(img_path, max_angle=10):
 
     return rotated
 
-# =========================文字内容切割=========================
+# =========================文字区域切割=========================
 # 获取文字块
 def get_text_block(img_path, black_tolerance=0.05):   
     img = cv2.imread(img_path)
@@ -914,6 +915,162 @@ def get_text_block(img_path, black_tolerance=0.05):
     
     return cropped
 
+# =========================文字区域分块=========================
+def smart_horizontal_split(img_path, min_gap=5):
+    # 读取图像并获取尺寸信息
+    img = cv2.imread(img_path)
+    H, W = img.shape[:2]
+    min_h = int(H * 0.25)  # 最小允许高度
+    max_h = int(H * 0.45)  # 最大允许高度
+    
+    # ========== 1. 预处理阶段 ==========
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (15, 15), 0)
+    thresh = cv2.adaptiveThreshold(blurred, 255, 
+                                  cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                  cv2.THRESH_BINARY_INV, 21, 10)
+    
+    # ========== 2. 文本保护处理 ==========
+    kernel = np.ones((3, 3), np.uint8)
+    cleaned = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    cleaned = cv2.dilate(cleaned, kernel, iterations=10)
+
+    # show_image(cleaned)
+
+    # ========== 3. 间隙检测算法 ==========
+    def detect_text_regions(cleaned):
+        window_h = 1  # 将窗口高度设为1，逐行检测
+        img_area = H * W
+        white_pixel_ratio = np.sum(cleaned == 255) / img_area
+        density_th = max(0.1, min(0.3, white_pixel_ratio * 0.5))  # 降低密度阈值
+        
+        text_mask = np.zeros(H, dtype=np.uint8)
+        for y in range(H - window_h + 1):
+            window = cleaned[y:y+window_h, :]
+            if np.sum(window == 255) / (window_h * W) > density_th:
+                text_mask[y:y+window_h] = 1  # 标记当前行
+        
+        # 区域合并（放宽合并条件）
+        regions, start = [], None
+        for y in range(H):
+            if text_mask[y]:
+                if start is None:
+                    start = y
+                end = y
+            else:
+                if start is not None:
+                    if regions and start - regions[-1][1] <= 5:  # 合并间隔扩大至5行
+                        regions[-1] = (regions[-1][0], end)
+                    else:
+                        regions.append((start, end))
+                    start = None
+        # 处理最后未闭合的区域
+        if start is not None:
+            if regions and start - regions[-1][1] <= 5:
+                regions[-1] = (regions[-1][0], end)
+            else:
+                regions.append((start, end))
+        
+        return [r for r in regions if r[1]-r[0] >= 1]  # 允许最小高度为1
+
+    white_regions = detect_text_regions(cleaned)
+
+    # ========== 4. 间隙分析 ==========
+    valid_gaps = []
+    for i in range(1, len(white_regions)):
+        gap_start = white_regions[i-1][1] + 1
+        gap_end = white_regions[i][0] - 1
+        if gap_end - gap_start >= min_gap:
+            valid_gaps.append({
+                'start': gap_start,
+                'end': gap_end,
+                'center': (gap_start + gap_end) // 2,
+                'size': gap_end - gap_start
+            })
+    
+    # # ==================================== 可视化调试 ====================================
+    # debug_img = img.copy()
+    # for start, end in white_regions:
+    #     cv2.rectangle(debug_img, (0, start), (W, end), (0, 0, 255), 4)
+    # for gap in valid_gaps:
+    #     cv2.rectangle(debug_img, (0, gap['start']), (W, gap['end']), (0, 255, 0), 2)
+    # show_image(debug_img)
+
+    # ========== 5. 智能分割算法 ==========
+    def find_optimal_splits(gaps):
+        H = img.shape[0]
+        min_h = int(H * 0.25)
+        max_h = int(H * 0.45)
+        
+        if not gaps:
+            return None
+        
+        # 生成候选分割点（使用间隙首尾+图像边界）
+        candidates = {0, H}  # 用集合自动去重
+        for gap in gaps:
+            candidates.add(gap['start'])
+            candidates.add(gap['end'])
+        candidates = sorted(list(candidates))  # 转换为有序列表
+        
+        # 动态规划寻找最优路径
+        dp = [{'score': -float('inf'), 'path': []} for _ in range(H+1)]
+        dp[0] = {'score': 0, 'path': [0]}
+        
+        for y in range(1, H+1):
+            for s in range(max(0, y-max_h), y-min_h+1):
+                if dp[s]['score'] == -float('inf'):
+                    continue
+                    
+                # 计算当前段得分
+                current_score = dp[s]['score']
+                # 间隙位置奖励（当s是某个间隙的结束，y是下个间隙的开始时获得奖励）
+                if any(g['end'] == s for g in gaps) and any(g['start'] == y for g in gaps):
+                    current_score += 15  # 连续间隙奖励
+                elif s in candidates or y in candidates:
+                    current_score += 10  # 候选点基础奖励
+                
+                # 更新最优路径
+                if current_score > dp[y]['score']:
+                    dp[y] = {
+                        'score': current_score,
+                        'path': dp[s]['path'] + [y]
+                    }
+        
+        # 提取最佳路径
+        best_splits = dp[H]['path'] if dp[H]['score'] != -float('inf') else None
+        
+        # 有效性验证
+        def validate(splits):
+            if not splits or splits[-1] != H:
+                return False
+            segments = [splits[i+1]-splits[i] for i in range(len(splits)-1)]
+            return all(min_h <= h <= max_h for h in segments) and (3 <= len(segments) <=4)
+        
+        if validate(best_splits):
+            return best_splits
+        
+        # 保底策略：全排列搜索
+        for split_num in [3,4]:
+            for points in combinations([c for c in candidates if 0 < c < H], split_num-1):
+                trial = sorted([0] + list(points) + [H])
+                if validate(trial):
+                    return trial
+        
+        return None
+
+    # ========== 5. 执行分割方案 ==========
+    final_split = find_optimal_splits(valid_gaps)
+
+    # ========== 6. 后处理验证 ==========
+    segments = []
+    for i in range(len(final_split)-1):
+        y1, y2 = final_split[i], final_split[i+1]
+        # 最终高度校验
+        if (y2 - y1) >= min_h:
+            segments.append(img[y1:y2])
+    
+    return segments
+
 if __name__ == "__main__":
     for i in range(1, 4):
         origin_path = f'./text_classificate/content/images/{i}_.png'
@@ -953,10 +1110,29 @@ if __name__ == "__main__":
         cv2.imwrite(f"./text_classificate/content/images/{i}_5_text_block_left.png", text_block_left)
         cv2.imwrite(f"./text_classificate/content/images/{i}_5_text_block_right.png", text_block_right)
 
-        # # 识别文字
-        # print(f"开始文字识别{i}_5_text_block_left.png...")
-        # left_text = get_pic_text(f"./text_classificate/content/images/{i}_5_text_block_left.png")
-        # print(f"左页文字识别结果：{left_text}")
-        # print(f"开始文字识别{i}_5_text_block_right.png...")
-        # right_text = get_pic_text(f"./text_classificate/content/images/{i}_5_text_block_right.png")
-        # print(f"右页文字识别结果：{right_text}")
+        # 文字区域分块
+        print(f"开始文字区域分块{i}_5_text_block_left.png...")
+        text_blocks_left = smart_horizontal_split(f"./text_classificate/content/images/{i}_5_text_block_left.png")
+        print(f"开始文字区域分块{i}_5_text_block_right.png...")
+        text_blocks_right = smart_horizontal_split(f"./text_classificate/content/images/{i}_5_text_block_right.png")
+        print(f"左页分块数量：{len(text_blocks_left)}，右页分块数量：{len(text_blocks_right)}")
+        for j, block in enumerate(text_blocks_left):
+            block_process = process_before_OCR(block)
+            cv2.imwrite(f"./text_classificate/content/images/{i}_6_text_block_left_{j}.png", block_process)
+        for j, block in enumerate(text_blocks_right):
+            block_process = process_before_OCR(block)
+            cv2.imwrite(f"./text_classificate/content/images/{i}_6_text_block_right_{j}.png", block_process)
+
+        # 识别文字
+        left_text = ""
+        print(f"开始文字识别{i}_6_text_block_left.png...")
+        for j in range(len(text_blocks_left)):
+            left_text += get_pic_text(f"./text_classificate/content/images/{i}_6_text_block_left_{j}.png")
+        print(f"左页文字识别结果：{left_text}")
+
+        right_text = ""
+        print(f"开始文字识别{i}_6_text_block_right.png...")
+        for j in range(len(text_blocks_right)):
+            right_text += get_pic_text(f"./text_classificate/content/images/{i}_6_text_block_right_{j}.png")
+        print(f"右页文字识别结果：{right_text}")
+        
