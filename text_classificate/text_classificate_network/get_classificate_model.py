@@ -1,13 +1,15 @@
 import time
 import torch
 import numpy as np
-from train_eval import train, init_network
-from importlib import import_module
 import argparse
+from text_classificate.text_classificate_network.train_eval import train, init_network
+from importlib import import_module
+# 导入数据预处理的函数：加载数据集、
+from text_classificate.text_classificate_network.utils import build_dataset, build_iterator, get_time_dif
 
 parser = argparse.ArgumentParser(description='Chinese Text Classification')
 # 添加一个参数：选择模型
-parser.add_argument('--model', default='TextRNN', type=str, required=True, help='choose a model: TextCNN, TextRNN, FastText, TextRCNN, TextRNN_Att, DPCNN, Transformer')
+parser.add_argument('--model', default='TextCNN', type=str, required=True, help='choose a model: TextCNN, TextRNN, FastText, TextRCNN, TextRNN_Att, DPCNN, Transformer')
 # 添加一个参数：选择embedding：random/pre_trained
 parser.add_argument('--embedding', default='pre_trained', type=str, help='random or pre_trained')
 # 添加一个参数：不是我们自己规定的
@@ -16,7 +18,7 @@ args = parser.parse_args()
 
 
 if __name__ == '__main__':
-    dataset = 'content'  # 数据集
+    dataset = './text_classificate/content'  # 数据集
 
     # 搜狗:embedding_SougouNews.npz, 腾讯:embedding_Tencent.npz, 随机初始化:random
     embedding = 'embedding_SougouNews.npz'
@@ -24,15 +26,9 @@ if __name__ == '__main__':
         embedding = 'random'
     # 将参数中的args.model传给model_name
     model_name = args.model  #TextCNN, TextRNN,
-    if model_name == 'FastText':
-        from utils_fasttext import build_dataset, build_iterator, get_time_dif
-        embedding = 'random'
-    else:
-        # 导入数据预处理的函数：加载数据集、
-        from utils import build_dataset, build_iterator, get_time_dif
 
     # 得到训练出来的模型
-    x = import_module('models.' + model_name)
+    x = import_module('text_classificate.text_classificate_network.models.' + model_name)
     config = x.Config(dataset, embedding)
     # 随机出来相同的数字，保证每次结果一样
     np.random.seed(1)
