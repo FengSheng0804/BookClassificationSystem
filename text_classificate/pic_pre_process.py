@@ -1237,7 +1237,7 @@ if __name__ == "__main__":
     # 创建Unet模型
     net=UNet(2).cuda()
     # 加载预训练权重，可以从0-5中选择
-    weight_path = './image_segmentation/content/params/unet_epoch2.pth'         # unet_epoch4：识别草皮的效果更好
+    weight_path = './image_segmentation/content/params/unet_epoch1.pth'         # unet_epoch4：识别草皮的效果更好
     if os.path.exists(weight_path):
         net.load_state_dict(torch.load(weight_path)['model_state'])
         print('successfully load model')
@@ -1248,62 +1248,62 @@ if __name__ == "__main__":
         transforms.ToTensor()
     ])
 
-    for i in range(1, 12):
-        # 最原始的图像路径
-        origin_path = f'./text_classificate/content/images/grass_{i}_.png'
+    # for i in range(1, 12):
+    #     # 最原始的图像路径
+    #     origin_path = f'./text_classificate/content/images/grass_{i}_.png'
 
-        # 使用Unet进行图像分割
-        print(f"开始Unet图像分割{i}.png...")
-        masked_img = predict_by_unet(origin_path, net, transform)
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_1_masked.png", masked_img)
+    #     # 使用Unet进行图像分割
+    #     print(f"开始Unet图像分割{i}.png...")
+    #     masked_img = predict_by_unet(origin_path, net, transform)
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_1_masked.png", masked_img)
 
-        # 旋转校正
-        print(f"开始旋转校正grass_{i}_1_masked.png...")
-        rotated = correct_book_rotation(f'./text_classificate/content/images/grass_{i}_1_masked.png')
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_2_rotated.png", rotated)
+    #     # 旋转校正
+    #     print(f"开始旋转校正grass_{i}_1_masked.png...")
+    #     rotated = correct_book_rotation(f'./text_classificate/content/images/grass_{i}_1_masked.png')
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_2_rotated.png", rotated)
 
-        # 分页处理
-        print(f"开始分页处理grass_{i}_2_rotated.png...")
-        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/grass_{i}_2_rotated.png")
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_3_left_page.png", left_page)
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_3_right_page.png", right_page)
+    #     # 分页处理
+    #     print(f"开始分页处理grass_{i}_2_rotated.png...")
+    #     left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/grass_{i}_2_rotated.png")
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_3_left_page.png", left_page)
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_3_right_page.png", right_page)
 
-        # 书页矫正
-        print(f"开始书页矫正grass_{i}_3_left_page.png...")
-        corrected_left = book_page_rectifier(f"./text_classificate/content/images/grass_{i}_3_left_page.png")
-        print(f"开始书页矫正grass_{i}_3_right_page.png...")
-        corrected_right = book_page_rectifier(f"./text_classificate/content/images/grass_{i}_3_right_page.png")
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_4_corrected_left.png", corrected_left)
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_4_corrected_right.png", corrected_right)
+    #     # 书页矫正
+    #     print(f"开始书页矫正grass_{i}_3_left_page.png...")
+    #     corrected_left = book_page_rectifier(f"./text_classificate/content/images/grass_{i}_3_left_page.png")
+    #     print(f"开始书页矫正grass_{i}_3_right_page.png...")
+    #     corrected_right = book_page_rectifier(f"./text_classificate/content/images/grass_{i}_3_right_page.png")
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_4_corrected_left.png", corrected_left)
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_4_corrected_right.png", corrected_right)
 
-        # 文字方向矫正
-        print(f"开始文字方向矫正grass_{i}_4_corrected_left.png...")
-        text_corrected_left = rotate_text_image(f"./text_classificate/content/images/grass_{i}_4_corrected_left.png")
-        print(f"开始文字方向矫正grass_{i}_4_corrected_right.png...")
-        text_corrected_right = rotate_text_image(f"./text_classificate/content/images/grass_{i}_4_corrected_right.png")
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_5_text_corrected_left.png", text_corrected_left)
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_5_text_corrected_right.png", text_corrected_right)
+    #     # 文字方向矫正
+    #     print(f"开始文字方向矫正grass_{i}_4_corrected_left.png...")
+    #     text_corrected_left = rotate_text_image(f"./text_classificate/content/images/grass_{i}_4_corrected_left.png")
+    #     print(f"开始文字方向矫正grass_{i}_4_corrected_right.png...")
+    #     text_corrected_right = rotate_text_image(f"./text_classificate/content/images/grass_{i}_4_corrected_right.png")
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_5_text_corrected_left.png", text_corrected_left)
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_5_text_corrected_right.png", text_corrected_right)
 
-        # 文字区域切割
-        print(f"开始文字区域切割grass_{i}_5_text_corrected_left.png...")
-        text_block_left = get_text_block(f"./text_classificate/content/images/grass_{i}_5_text_corrected_left.png")
-        print(f"开始文字区域切割grass_{i}_5_text_corrected_right.png...")
-        text_block_right = get_text_block(f"./text_classificate/content/images/grass_{i}_5_text_corrected_right.png")
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_6_text_block_left.png", text_block_left)
-        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_6_text_block_right.png", text_block_right)
+    #     # 文字区域切割
+    #     print(f"开始文字区域切割grass_{i}_5_text_corrected_left.png...")
+    #     text_block_left = get_text_block(f"./text_classificate/content/images/grass_{i}_5_text_corrected_left.png")
+    #     print(f"开始文字区域切割grass_{i}_5_text_corrected_right.png...")
+    #     text_block_right = get_text_block(f"./text_classificate/content/images/grass_{i}_5_text_corrected_right.png")
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_6_text_block_left.png", text_block_left)
+    #     cv2.imwrite(f"./text_classificate/content/images/grass_{i}_6_text_block_right.png", text_block_right)
 
-        # 文字区域分块
-        print(f"开始文字区域分块grass_{i}_6_text_block_left.png...")
-        text_blocks_left = smart_horizontal_split(f"./text_classificate/content/images/grass_{i}_6_text_block_left.png")
-        print(f"开始文字区域分块grass_{i}_6_text_block_right.png...")
-        text_blocks_right = smart_horizontal_split(f"./text_classificate/content/images/grass_{i}_6_text_block_right.png")
-        print(f"左页分块数量：{len(text_blocks_left)}，右页分块数量：{len(text_blocks_right)}")
-        for j, block in enumerate(text_blocks_left):
-            block_process = process_before_OCR(block)
-            cv2.imwrite(f"./text_classificate/content/images/grass_{i}_7_text_block_left_{j}.png", block_process)
-        for j, block in enumerate(text_blocks_right):
-            block_process = process_before_OCR(block)
-            cv2.imwrite(f"./text_classificate/content/images/grass_{i}_7_text_block_right_{j}.png", block_process)
+    #     # 文字区域分块
+    #     print(f"开始文字区域分块grass_{i}_6_text_block_left.png...")
+    #     text_blocks_left = smart_horizontal_split(f"./text_classificate/content/images/grass_{i}_6_text_block_left.png")
+    #     print(f"开始文字区域分块grass_{i}_6_text_block_right.png...")
+    #     text_blocks_right = smart_horizontal_split(f"./text_classificate/content/images/grass_{i}_6_text_block_right.png")
+    #     print(f"左页分块数量：{len(text_blocks_left)}，右页分块数量：{len(text_blocks_right)}")
+    #     for j, block in enumerate(text_blocks_left):
+    #         block_process = process_before_OCR(block)
+    #         cv2.imwrite(f"./text_classificate/content/images/grass_{i}_7_text_block_left_{j}.png", block_process)
+    #     for j, block in enumerate(text_blocks_right):
+    #         block_process = process_before_OCR(block)
+    #         cv2.imwrite(f"./text_classificate/content/images/grass_{i}_7_text_block_right_{j}.png", block_process)
 
     #     # 识别文字
     #     left_text = ""
@@ -1318,4 +1318,4 @@ if __name__ == "__main__":
     #         right_text += get_pic_text(f"./text_classificate/content/images/grass_{i}_6_text_block_right_{j}.png")
     #     print(f"右页文字识别结果：{right_text}")
         
-    # process_main('./text_classificate/content/images/', 'grass_6.png', net, transform)
+    process_main('./text_classificate/content/images/', 'grass_4.png', net, transform)
