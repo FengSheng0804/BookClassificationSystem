@@ -35,7 +35,7 @@
 
 <img src=".\images\grass_4_.png" alt="grass_4_" style="zoom: 25%;" />
 
-![grass_4_0_mask](.\images\grass_4_0_mask.png)
+<img src=".\images\grass_4_0_mask.png" alt="grass_4_0_mask" style="zoom: 200%;" />
 
 然后将掩码应用于原图得到经过掩码处理过的图片
 
