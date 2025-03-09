@@ -1318,4 +1318,4 @@ if __name__ == "__main__":
     #         right_text += get_pic_text(f"./text_classificate/content/images/grass_{i}_6_text_block_right_{j}.png")
     #     print(f"右页文字识别结果：{right_text}")
         
-    process_main('./text_classificate/content/images/', 'grass_4.png', net, transform)
+    process_main('./text_classificate/content/images/', 'grass_4_.png', net, transform)
