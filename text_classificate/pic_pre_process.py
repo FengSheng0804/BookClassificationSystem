@@ -2,12 +2,17 @@ import cv2
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from PIL import Image
 from math import atan2, degrees, sqrt
 from itertools import combinations
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN, KMeans
 from scipy.interpolate import CubicSpline
+from scipy.ndimage import gaussian_filter1d
+from torchvision import transforms
+from image_segmentation.models.Unet import UNet
 from dataset_get.pic_to_text_by_OCR import get_pic_text
+from image_segmentation.utils import resize_rgb_image
 
 # 处理数据集
 def process_dataset():
@@ -57,6 +62,62 @@ def show_image(img):
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.axis('off')
     plt.show()
+
+# 删除小的连通组件
+def remove_small_connected_components(mask, min_size):
+    # 处理白色小区域，转为黑色
+    num_labels_white, labels_white, stats_white, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    mask_white_processed = np.zeros(mask.shape, dtype=np.uint8)
+    for i in range(1, num_labels_white):  # 跳过背景（0）
+        if stats_white[i, cv2.CC_STAT_AREA] >= min_size:
+            mask_white_processed[labels_white == i] = 255  # 保留大面积白色
+    
+    # show_image(mask_white_processed)
+
+    # 将得到的大白色区域反转，小黑色区域变白
+    mask_inv = 255 - mask_white_processed  # 反转图像，黑色区域变为白色
+    num_labels_black, labels_black, stats_black, _ = cv2.connectedComponentsWithStats(mask_inv, connectivity=8)
+    mask_inv_processed = np.zeros(mask_inv.shape, dtype=np.uint8)
+    for i in range(1, num_labels_black):
+        if stats_black[i, cv2.CC_STAT_AREA] >= min_size:
+            mask_inv_processed[labels_black == i] = 255  # 保留反转后的大面积白色（即原黑色大区域）
+    mask_black_processed = 255 - mask_inv_processed  # 反转回来，小黑色区域变白
+
+    # show_image(mask_black_processed)
+    
+    # 合并结果：保留原大白色 + 原小黑色变白
+    final_mask = cv2.bitwise_or(mask_white_processed, mask_black_processed)
+    return final_mask
+
+# 使用Unet进行图像分割
+def predict_by_unet(origin_path, net, transform):
+    img = cv2.imread(origin_path)
+    resize_img = resize_rgb_image(origin_path)
+    img_data=transform(resize_img).cuda()
+    img_data=torch.unsqueeze(img_data,dim=0)
+    net.eval()
+    out=net(img_data)
+    pred_mask = torch.argmax(out, dim=1).squeeze(0)  # [H,W]
+    # 转换为numpy并调整数据类型
+    mask_np = pred_mask.byte().cpu().numpy() * 255
+
+    # 删除小的连通域
+    mask_np = remove_small_connected_components(mask_np, 2000)
+
+    # 将掩码恢复成原图大小
+    mask_np_after = cv2.resize(mask_np, (img.shape[1], img.shape[0]))
+
+    # 先闭运算填补边缘缝隙，再开运算消除毛刺
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    closed = cv2.morphologyEx(mask_np_after, cv2.MORPH_CLOSE, kernel, iterations=4)
+    smoothed = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=10)
+
+    # show_image(smoothed)
+
+    # 将掩码应用到原图上
+    masked_img = cv2.bitwise_and(img, img, mask=smoothed)
+
+    return masked_img
 
 # =========================裁剪黑边+图像倾斜纠正=========================
 # 自动裁剪黑边
@@ -121,41 +182,6 @@ def correct_book_rotation(img_path):
 
 # =========================分页处理+分界线倾斜矫正=========================
 # 选择最佳分界点
-def find_vertical_spine_points(points, img_center, vertical_margin=0.1):
-    """
-    寻找垂直中缝的上下端点
-    :param points: 候选角点集合 (N,2)
-    :param img_center: 图像中心坐标 (cx, cy)
-    :param vertical_margin: 垂直方向中间区域比例
-    :return: (upper_point, lower_point)
-    """
-    cx, cy = img_center                                                                     # 获取图像中心坐标
-    img_width = 2 * cx                                                                      # 获取图像宽度
-
-    # ========== 1. 筛选位于垂直中线附近的点（宽度10%范围内） ==========
-    vertical_points = [p for p in points if abs(p[0] - cx) < img_width * 0.05]              # 筛选位于垂直中线附近的点
-
-    if len(vertical_points) < 2:
-        # 降级处理：选择x坐标最接近中心的两个点
-        vertical_points = sorted(points, key=lambda p: abs(p[0] - cx))[:2]                  # 选择x坐标最接近中心的两个点
-
-    # ========== 2. 按垂直位置排序 ==========
-    sorted_points = sorted(vertical_points, key=lambda p: p[1])
-    
-    # ========== 3. 确定中间区域边界 ==========
-    upper_bound = cy * (1 - vertical_margin)                                                # 确定上边界
-    lower_bound = cy * (1 + vertical_margin)                                                # 确定下边界
-
-    # ========== 4.选择中间区域最上/下的点 ==========
-    upper_candidates = [p for p in sorted_points if p[1] < upper_bound]                     # 选择中间区域最上的点
-    lower_candidates = [p for p in sorted_points if p[1] > lower_bound]                     # 选择中间区域最下的点
-
-    upper = min(upper_candidates, key=lambda p: p[1]) if upper_candidates else sorted_points[0]     # 选择中间区域最上的点
-    lower = max(lower_candidates, key=lambda p: p[1]) if lower_candidates else sorted_points[-1]    # 选择中间区域最下的点
-
-    return upper, lower
-
-# 计算旋转角度
 def find_vertical_spine_points(points, img_size):
     """
     检测垂直中缝的上下端点
@@ -169,13 +195,17 @@ def find_vertical_spine_points(points, img_size):
     # ========== 1. 筛选位于垂直中线附近15%区域的点 ==========
     vertical_mask = (points[:,0] > center_x - w*0.075) & (points[:,0] < center_x + w*0.075)
     vertical_points = points[vertical_mask]                                                 # 筛选位于垂直中线附近15%区域的点
-    
+
+    print('vertical_points的个数：',len(vertical_points))
+
     # ========== 2. 降级处理：若无足够点，选择x最接近中心的2个点 ==========
     if len(vertical_points) < 2:
+        print("vertical_points的个数小于2，降级处理")
         vertical_points = sorted(points, key=lambda p: abs(p[0]-center_x))[:2]              # 选择x最接近中心的2个点
     
     # ========== 3. 按垂直位置排序并选择上下端点 ==========
     sorted_points = sorted(vertical_points, key=lambda p: p[1])                             # 按垂直位置排序
+
     return sorted_points[0], sorted_points[-1]
 
 # 计算旋转角度
@@ -210,25 +240,60 @@ def find_book_corners_and_split(img_path):
     points = np.squeeze(main_contour, axis=1)                                               # 提取轮廓点集
 
     # ========== 3. 候选角点检测 ==========
-    def curvature_angle(points, idx, window=15):
-        """改进的曲率角度检测"""
-        prev = points[max(0, idx-window):idx]                                               # 前窗口
-        next = points[idx:min(len(points), idx+window)]                                     # 后窗口
-        
-        if len(prev)<2 or len(next)<2:
-            return 180
-        
-        v1 = np.mean(prev[-2:] - prev[-1], axis=0)                                          # 计算前窗口向量
-        v2 = np.mean(next[:2] - next[0], axis=0)                                            # 计算后窗口向量
-        dot = v1[0]*v2[0] + v1[1]*v2[1]                                                     # 计算点积
-        mod = np.linalg.norm(v1) * np.linalg.norm(v2)                                       # 计算模长
-        return degrees(np.arccos(dot/(mod + 1e-7)))                                         
+    def smooth_points(points, sigma=2):
+        """高斯平滑点云坐标"""
+        x = [p[0] for p in points]
+        y = [p[1] for p in points]
+        x_smoothed = gaussian_filter1d(x, sigma=sigma)
+        y_smoothed = gaussian_filter1d(y, sigma=sigma)
+        return list(zip(x_smoothed, y_smoothed))
 
+    def curvature_angle(points, idx, window):
+        """改进的曲率角度计算（基于滑动窗口向量方向）"""
+        start = max(0, idx - window)
+        end = min(len(points), idx + window)
+        prev_segment = points[start:idx]
+        next_segment = points[idx:end]
+        
+        # 至少需要两个点计算方向
+        if len(prev_segment) < 1 or len(next_segment) < 1:
+            return 180.0
+        
+        # 计算前向和后向向量（起点到终点）
+        v1 = np.array(points[idx]) - np.array(prev_segment[0])
+        v2 = np.array(next_segment[-1]) - np.array(points[idx])
+        
+        # 处理零向量
+        norm_v1 = np.linalg.norm(v1)
+        norm_v2 = np.linalg.norm(v2)
+        if norm_v1 == 0 or norm_v2 == 0:
+            return 180.0
+        
+        # 计算夹角（0~180度）
+        cos_theta = np.dot(v1, v2) / (norm_v1 * norm_v2)
+        cos_theta = np.clip(cos_theta, -1.0, 1.0)  # 避免数值误差
+        return np.degrees(np.arccos(cos_theta))
+
+    # 生成平滑后的点云
+    smoothed_points = smooth_points(points, sigma=1)
+
+    # 多尺度窗口检测（小窗口+大窗口）
     candidates = []
-    window_size = max(15, int(0.005 * len(points)))                                         # 窗口大小
-    for i in range(len(points)):
-        if 80 < curvature_angle(points, i, window_size) < 100:                              # 严格直角范围
-            candidates.append(points[i])
+    window_sizes = [
+        max(3, int(0.003 * len(points))),  # 小窗口：敏感局部特征
+        max(5, int(0.01 * len(points)))    # 大窗口：稳定大范围变化
+    ]
+
+    for i in range(len(smoothed_points)):
+        for ws in window_sizes:
+            angle = curvature_angle(smoothed_points, i, ws)
+            # 放宽角度条件并允许不同尺度检测
+            if 30 < angle < 150:
+                candidates.append(points[i])  # 保留原始坐标
+                break  # 满足任一尺度即加入候选
+
+    # 去重（如果同一点被多个尺度检测到）
+    candidates = list({tuple(p): p for p in candidates}.values())
     
     # ========== 4. 角点聚类筛选 ==========
     clustering = DBSCAN(eps=w*0.03, min_samples=3).fit(candidates)                          # DBSCAN聚类
@@ -277,15 +342,14 @@ def find_book_corners_and_split(img_path):
     # # ==================================== 可视化调试 ====================================
     # # 绘制聚类中心，中缝，旋转后中缝
     # debug_img = img.copy()
-    # for pt in final_corners:
-    #     cv2.circle(debug_img, tuple(pt.astype(int)), 10, (0,0,255), -1)
     # for pt in candidates:
     #     cv2.circle(debug_img, tuple(pt.astype(int)), 5, (0,255,0), -1)
+    # for pt in final_corners:
+    #     cv2.circle(debug_img, tuple(pt.astype(int)), 10, (0,0,255), -1)
     # cv2.line(debug_img, tuple(upper.astype(int)), tuple(lower.astype(int)),
     #         (255,0,0), 3)
     # cv2.putText(debug_img, f"Rotate: {rotate_angle:.2f}°", (20,40),
     #            cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 4)
-
     # show_image(debug_img)
 
     return left, right
@@ -425,7 +489,7 @@ def horizontal_warp_image(img, src_points):
 
 
 # 书页在垂直方向上展开
-def vertical_warp_image(img, num_cells=30, k=1.3):
+def vertical_warp_image(img, num_cells=40, k=1.3):
     # ========== 1. 图像预处理 ==========
     # 预处理强化文字对比度
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)                                                # 灰度化
@@ -725,8 +789,8 @@ def rotate_text_image(img_path, max_angle=10):
 
     # ========== 2. 自适应阈值分割 ==========
     thresh = cv2.adaptiveThreshold(blurred, 255, 
-                                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                cv2.THRESH_BINARY_INV, 21, 10)
+                                  cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                  cv2.THRESH_BINARY_INV, 21, 10)
 
     # show_image(thresh)
 
@@ -755,17 +819,36 @@ def rotate_text_image(img_path, max_angle=10):
     for line in lines:
         x1, y1, x2, y2 = line[0]
         angle = degrees(atan2(y2 - y1, x2 - x1))
-        if angle > -max_angle and angle < max_angle and angle != 0:
+        if -max_angle < angle < max_angle and angle != 0:
             angles.append(angle)
 
-    # ========== 6. 计算最终角度 ==========
     if not angles:
         return img
-    angle = np.mean(angles)
 
-    # print(f"文字方向矫正角度：{angle}")
+    # ========== 6. 角度聚类==========
+    # 将角度排序后按阈值聚类
+    sorted_angles = sorted(angles)                                                          # 排序
+    clusters = []                                                                           # 角度簇
+    current_cluster = [sorted_angles[0]]                                                    # 当前簇
+    angle_threshold = 2.0                                                                   # 同一簇允许的最大角度差
+    
+    for angle in sorted_angles[1:]:
+        if abs(angle - current_cluster[-1]) <= angle_threshold:
+            current_cluster.append(angle)
+        else:
+            clusters.append(current_cluster)
+            current_cluster = [angle]
+    clusters.append(current_cluster)
+    
+    # 选择最大的角度簇
+    max_cluster = max(clusters, key=len)
+    print(f"检测到 {len(clusters)} 个角度簇，最大簇包含 {len(max_cluster)} 条直线")
+    
+    # ========== 7. 计算最终角度 ==========
+    angle = np.mean(max_cluster)
+    print(f"最终矫正角度：{angle:.2f} 度")
 
-    # ========== 7. 旋转图像 ==========
+    # ========== 8. 旋转图像 ==========
     center = (img.shape[1] // 2, img.shape[0] // 2)
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
 
@@ -1094,68 +1177,145 @@ def smart_horizontal_split(img_path, min_gap=5):
             segments.append(img[y1:y2])                                                     # 添加分割段
     return segments
 
+# =========================主处理流程=========================
+def process_main(fold_path, img_name, net, transform):
+    # 使用Unet进行图像分割
+    img_name = img_name.split(".")[0]
+    print(f"开始Unet图像分割{img_name}.png...")
+    masked_img = predict_by_unet(fold_path + img_name + '.png', net, transform)
+    cv2.imwrite(f"./text_classificate/content/images/{img_name}_1_masked.png", masked_img)
+
+    # 旋转校正
+    print(f"开始旋转校正{img_name}_1_masked.png...")
+    rotated = correct_book_rotation(f'{fold_path}/{img_name}_1_masked.png')
+    cv2.imwrite(f"{fold_path}/{img_name}_2_rotated.png", rotated)
+
+    # 分页处理
+    print(f"开始分页处理{img_name}_2_rotated.png...")
+    left_page, right_page = find_book_corners_and_split(f"{fold_path}/{img_name}_2_rotated.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_3_left_page.png", left_page)
+    cv2.imwrite(f"{fold_path}/{img_name}_3_right_page.png", right_page)
+
+    # 书页矫正
+    print(f"开始书页矫正{img_name}_3_left_page.png...")
+    corrected_left = book_page_rectifier(f"{fold_path}/{img_name}_3_left_page.png")
+    print(f"开始书页矫正{img_name}_3_right_page.png...")
+    corrected_right = book_page_rectifier(f"{fold_path}/{img_name}_3_right_page.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_4_corrected_left.png", corrected_left)
+    cv2.imwrite(f"{fold_path}/{img_name}_4_corrected_right.png", corrected_right)
+
+    # 文字方向矫正
+    print(f"开始文字方向矫正{img_name}_4_corrected_left.png...")
+    text_corrected_left = rotate_text_image(f"{fold_path}/{img_name}_4_corrected_left.png")
+    print(f"开始文字方向矫正{img_name}_4_corrected_right.png...")
+    text_corrected_right = rotate_text_image(f"{fold_path}/{img_name}_4_corrected_right.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_5_text_corrected_left.png", text_corrected_left)
+    cv2.imwrite(f"{fold_path}/{img_name}_5_text_corrected_right.png", text_corrected_right)
+
+    # 文字区域切割
+    print(f"开始文字区域切割{img_name}_5_text_corrected_left.png...")
+    text_block_left = get_text_block(f"{fold_path}/{img_name}_5_text_corrected_left.png")
+    print(f"开始文字区域切割{img_name}_5_text_corrected_right.png...")
+    text_block_right = get_text_block(f"{fold_path}/{img_name}_5_text_corrected_right.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_6_text_block_left.png", text_block_left)
+    cv2.imwrite(f"{fold_path}/{img_name}_6_text_block_right.png", text_block_right)
+
+    # 文字区域分块
+    print(f"开始文字区域分块{img_name}_6_text_block_left.png...")
+    text_blocks_left = smart_horizontal_split(f"{fold_path}/{img_name}_6_text_block_left.png")
+    print(f"开始文字区域分块{img_name}_6_text_block_right.png...")
+    text_blocks_right = smart_horizontal_split(f"{fold_path}/{img_name}_6_text_block_right.png")
+    print(f"左页分块数量：{len(text_blocks_left)}，右页分块数量：{len(text_blocks_right)}")
+    for j, block in enumerate(text_blocks_left):
+        block_process = process_before_OCR(block)
+        cv2.imwrite(f"{fold_path}/{img_name}_7_text_block_left_{j}.png", block_process)
+    for j, block in enumerate(text_blocks_right):
+        block_process = process_before_OCR(block)
+        cv2.imwrite(f"{fold_path}/{img_name}_7_text_block_right_{j}.png", block_process)
+
 if __name__ == "__main__":
-    for i in range(1, 7):
-        origin_path = f'./text_classificate/content/images/{i}_.png'
+    # 创建Unet模型
+    net=UNet(2).cuda()
+    # 加载预训练权重，可以从0-5中选择
+    weight_path = './image_segmentation/content/params/unet_epoch2.pth'         # unet_epoch4：识别草皮的效果更好
+    if os.path.exists(weight_path):
+        net.load_state_dict(torch.load(weight_path)['model_state'])
+        print('successfully load model')
+    else:
+        print('no loading')
+    # 加载transform
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+
+    for i in range(1, 12):
+        # 最原始的图像路径
+        origin_path = f'./text_classificate/content/images/grass_{i}_.png'
+
+        # 使用Unet进行图像分割
+        print(f"开始Unet图像分割{i}.png...")
+        masked_img = predict_by_unet(origin_path, net, transform)
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_1_masked.png", masked_img)
 
         # 旋转校正
-        print(f"开始旋转校正{i}_.png...")
-        rotated = correct_book_rotation(origin_path)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_1_rotated.png", rotated)
+        print(f"开始旋转校正grass_{i}_1_masked.png...")
+        rotated = correct_book_rotation(f'./text_classificate/content/images/grass_{i}_1_masked.png')
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_2_rotated.png", rotated)
 
         # 分页处理
-        print(f"开始分页处理{i}_1_rotated.png...")
-        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/{i}_1_rotated.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_2_left_page.png", left_page)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_2_right_page.png", right_page)
+        print(f"开始分页处理grass_{i}_2_rotated.png...")
+        left_page, right_page = find_book_corners_and_split(f"./text_classificate/content/images/grass_{i}_2_rotated.png")
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_3_left_page.png", left_page)
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_3_right_page.png", right_page)
 
         # 书页矫正
-        print(f"开始书页矫正{i}_2_left_page.png...")
-        corrected_left = book_page_rectifier(f"./text_classificate/content/images/{i}_2_left_page.png")
-        print(f"开始书页矫正{i}_2_right_page.png...")
-        corrected_right = book_page_rectifier(f"./text_classificate/content/images/{i}_2_right_page.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_3_corrected_left.png", corrected_left)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_3_corrected_right.png", corrected_right)
+        print(f"开始书页矫正grass_{i}_3_left_page.png...")
+        corrected_left = book_page_rectifier(f"./text_classificate/content/images/grass_{i}_3_left_page.png")
+        print(f"开始书页矫正grass_{i}_3_right_page.png...")
+        corrected_right = book_page_rectifier(f"./text_classificate/content/images/grass_{i}_3_right_page.png")
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_4_corrected_left.png", corrected_left)
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_4_corrected_right.png", corrected_right)
 
         # 文字方向矫正
-        print(f"开始文字方向矫正{i}_3_corrected_left.png...")
-        text_corrected_left = rotate_text_image(f"./text_classificate/content/images/{i}_3_corrected_left.png")
-        print(f"开始文字方向矫正{i}_3_corrected_right.png...")
-        text_corrected_right = rotate_text_image(f"./text_classificate/content/images/{i}_3_corrected_right.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_4_text_corrected_left.png", text_corrected_left)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_4_text_corrected_right.png", text_corrected_right)
+        print(f"开始文字方向矫正grass_{i}_4_corrected_left.png...")
+        text_corrected_left = rotate_text_image(f"./text_classificate/content/images/grass_{i}_4_corrected_left.png")
+        print(f"开始文字方向矫正grass_{i}_4_corrected_right.png...")
+        text_corrected_right = rotate_text_image(f"./text_classificate/content/images/grass_{i}_4_corrected_right.png")
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_5_text_corrected_left.png", text_corrected_left)
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_5_text_corrected_right.png", text_corrected_right)
 
         # 文字区域切割
-        print(f"开始文字区域切割{i}_4_text_corrected_left.png...")
-        text_block_left = get_text_block(f"./text_classificate/content/images/{i}_4_text_corrected_left.png")
-        print(f"开始文字区域切割{i}_4_text_corrected_right.png...")
-        text_block_right = get_text_block(f"./text_classificate/content/images/{i}_4_text_corrected_right.png")
-        cv2.imwrite(f"./text_classificate/content/images/{i}_5_text_block_left.png", text_block_left)
-        cv2.imwrite(f"./text_classificate/content/images/{i}_5_text_block_right.png", text_block_right)
+        print(f"开始文字区域切割grass_{i}_5_text_corrected_left.png...")
+        text_block_left = get_text_block(f"./text_classificate/content/images/grass_{i}_5_text_corrected_left.png")
+        print(f"开始文字区域切割grass_{i}_5_text_corrected_right.png...")
+        text_block_right = get_text_block(f"./text_classificate/content/images/grass_{i}_5_text_corrected_right.png")
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_6_text_block_left.png", text_block_left)
+        cv2.imwrite(f"./text_classificate/content/images/grass_{i}_6_text_block_right.png", text_block_right)
 
         # 文字区域分块
-        print(f"开始文字区域分块{i}_5_text_block_left.png...")
-        text_blocks_left = smart_horizontal_split(f"./text_classificate/content/images/{i}_5_text_block_left.png")
-        print(f"开始文字区域分块{i}_5_text_block_right.png...")
-        text_blocks_right = smart_horizontal_split(f"./text_classificate/content/images/{i}_5_text_block_right.png")
+        print(f"开始文字区域分块grass_{i}_6_text_block_left.png...")
+        text_blocks_left = smart_horizontal_split(f"./text_classificate/content/images/grass_{i}_6_text_block_left.png")
+        print(f"开始文字区域分块grass_{i}_6_text_block_right.png...")
+        text_blocks_right = smart_horizontal_split(f"./text_classificate/content/images/grass_{i}_6_text_block_right.png")
         print(f"左页分块数量：{len(text_blocks_left)}，右页分块数量：{len(text_blocks_right)}")
         for j, block in enumerate(text_blocks_left):
             block_process = process_before_OCR(block)
-            cv2.imwrite(f"./text_classificate/content/images/{i}_6_text_block_left_{j}.png", block_process)
+            cv2.imwrite(f"./text_classificate/content/images/grass_{i}_7_text_block_left_{j}.png", block_process)
         for j, block in enumerate(text_blocks_right):
             block_process = process_before_OCR(block)
-            cv2.imwrite(f"./text_classificate/content/images/{i}_6_text_block_right_{j}.png", block_process)
+            cv2.imwrite(f"./text_classificate/content/images/grass_{i}_7_text_block_right_{j}.png", block_process)
 
-        # 识别文字
-        left_text = ""
-        print(f"开始文字识别{i}_6_text_block_left.png...")
-        for j in range(len(text_blocks_left)):
-            left_text += get_pic_text(f"./text_classificate/content/images/{i}_6_text_block_left_{j}.png")
-        print(f"左页文字识别结果：{left_text}")
+    #     # 识别文字
+    #     left_text = ""
+    #     print(f"开始文字识别grass_{i}_7_text_block_left.png...")
+    #     for j in range(len(text_blocks_left)):
+    #         left_text += get_pic_text(f"./text_classificate/content/images/grass_{i}_7_text_block_left_{j}.png")
+    #     print(f"左页文字识别结果：{left_text}")
 
-        right_text = ""
-        print(f"开始文字识别{i}_6_text_block_right.png...")
-        for j in range(len(text_blocks_right)):
-            right_text += get_pic_text(f"./text_classificate/content/images/{i}_6_text_block_right_{j}.png")
-        print(f"右页文字识别结果：{right_text}")
+    #     right_text = ""
+    #     print(f"开始文字识别grass_{i}_6_text_block_right.png...")
+    #     for j in range(len(text_blocks_right)):
+    #         right_text += get_pic_text(f"./text_classificate/content/images/grass_{i}_6_text_block_right_{j}.png")
+    #     print(f"右页文字识别结果：{right_text}")
         
+    # process_main('./text_classificate/content/images/', 'grass_6.png', net, transform)

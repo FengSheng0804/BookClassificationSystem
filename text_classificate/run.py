@@ -11,12 +11,12 @@
 # 作者：高培骏
 # 创建日期：2025年2月25日
 # 版本：1.1
-# 用途：将函数的功能进行拆分，使得代码更加清晰
+# 介绍：将函数的功能进行拆分，使得代码更加清晰
 
 # 作者：高培骏
 # 创建日期：2025年2月26日
 # 版本：1.2
-# 用途：添加语音播报功能
+# 介绍：添加语音播报功能
 
 
 import RPi.GPIO as GPIO
@@ -242,10 +242,10 @@ def button_callback2(channel):
         f.write(f"\t\tButton2 pressed\n")
 
     # 获取模型
-    x = import_module('models.TextRNN')
+    x = import_module('text_classificate_network.models.TextCNN')
     config = x.Config('/home/pi/dc/content', 'embedding_SougouNews.npz')
     model = x.Model(config)
-    model.load_state_dict(torch.load('/home/pi/dc/content/saved_dict/TextRNN.ckpt', map_location='cpu', weights_only=True))
+    model.load_state_dict(torch.load('/home/pi/dc/content/saved_dict/TextCNN.ckpt', map_location='cpu', weights_only=True))
     model.eval()
         
     # 获取原图片地址并二值化处理
