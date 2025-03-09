@@ -191,3 +191,14 @@ warped = cv2.warpPerspective(cell_region, matrix, (int(target_width), int(target
 ```
 
 发现调整后得到的warped终于不再是全黑的，并且能够显示图像了。那问题就出在当发生变换的时候，变换得到的图像产生了越界，导致调用warpPerspective()函数的时候使用默认的填充方法：cv2.BORDER_DEFAULT，也就是全黑填充，从而导致图像全黑，但是产生越界的原因至今仍没有找到。
+
+### 在使用`git`命令上传模型文件的时候，一直显示报错`couldn't connect to server`
+
+在我上传模型文件之前，还没有遇到这个报错，遇到这个报错之后我又尝试了上传其他文件试试，发现可以正常上传没有问题，于是我开始思考是不是因为文件太大了导致的，我上网查阅github的官方文档发现了这样一句话：
+
+![image-1](./images/image-1.png)
+
+就是说github会阻止大于100MB的文件，我一看我的权重参数文件，大小是118MB，那就可以解释的通了，于是我上网搜索了如何在github中上传大文件，看到需要使用`git-lfs`来实现，具体的使用方法如下所示：
+
+![image-2](./images/image-2.png)
+
