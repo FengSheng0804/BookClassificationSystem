@@ -23,62 +23,183 @@
    ├─ 语音交互接口
    └─ 实时日志系统
 
+## 设计流程
+
+### 树莓派控制摄像机
+
+在树莓派中，开机自启动run.py文件，里面包括有对LED灯的控制，对按键的监听：按键1：控制连接在树莓派中的USB摄像头进行拍摄，将文件保存在本地，同时使用阿里云盘发送到手机上；按键2：对得到的照片进行处理，实现从摄像机输出的图片到OCR输入的图片的端到端处理。
+
+### 端到端处理
+
+先将原始的图片使用训练好的Unet神经网络进行图像分割：得到图像的掩码，再将掩码应用到原图片中，得到删除背景的图片。
+
+<img src=".\images\grass_4_.png" alt="grass_4_" style="zoom: 25%;" />
+
+![grass_4_0_mask](.\images\grass_4_0_mask.png)
+
+然后将掩码应用于原图得到经过掩码处理过的图片
+
+<img src=".\images\grass_4_1_masked.png" alt="grass_4_1_masked" style="zoom:25%;" />
+
+接着，对图像进行全自动分页处理，得到经过自动旋转和切割得到图片
+
+<img src=".\images\grass_4_2_rotated.png" alt="grass_4_2_rotated" style="zoom:25%;" />
+
+然后，对图片进行自动分页处理，得到左页面和右页面
+
+<img src=".\images\grass_4_3_left_page.png" alt="grass_4_3_left_page" style="zoom:25%;" />
+
+<img src=".\images\grass_4_3_right_page.png" alt="grass_4_3_right_page" style="zoom:25%;" />
+
+再接着，将图像进行自动化展平处理，得到经过展平后的作业面和右页面
+
+<img src=".\images\grass_4_4_corrected_left.png" alt="grass_4_4_corrected_left" style="zoom:25%;" />
+
+<img src=".\images\grass_4_4_corrected_right.png" alt="grass_4_4_corrected_right" style="zoom:25%;" />
+
+由于展平后会导致文字倾斜，所以我们再进行文本倾斜校正
+
+<img src=".\images\grass_4_5_text_corrected_left.png" alt="grass_4_5_text_corrected_left" style="zoom:25%;" />
+
+<img src=".\images\grass_4_5_text_corrected_right.png" alt="grass_4_5_text_corrected_right" style="zoom:25%;" />
+
+接下来，我们将自动化裁剪获取到存在文本的区域，
+
+<img src=".\images\grass_4_6_text_block_left.png" alt="grass_4_6_text_block_left" style="zoom:25%;" />
+
+<img src=".\images\grass_4_6_text_block_right.png" alt="grass_4_6_text_block_right" style="zoom:25%;" />
+
+最后，我们将根据文本的规模，将文本区域自动切割成三块或者四块，并进行文本的显示效果增强
+
+**左侧页面**
+
+页面一
+
+<img src=".\images\grass_4_7_text_block_left_0.png" alt="grass_4_7_text_block_left_0" style="zoom: 50%;" />
+
+页面二
+
+<img src=".\images\grass_4_7_text_block_left_1.png" alt="grass_4_7_text_block_left_1" style="zoom: 50%;" />
+
+页面三
+
+<img src=".\images\grass_4_7_text_block_left_2.png" alt="grass_4_7_text_block_left_2" style="zoom:50%;" />
+
+**右侧页面**
+
+页面一
+
+<img src=".\images\grass_4_7_text_block_right_0.png" alt="grass_4_7_text_block_right_0" style="zoom:50%;" />
+
+页面二
+
+<img src=".\images\grass_4_7_text_block_right_1.png" alt="grass_4_7_text_block_right_1" style="zoom:50%;" />
+
+页面三
+
+<img src=".\images\grass_4_7_text_block_right_2.png" alt="grass_4_7_text_block_right_2" style="zoom:50%;" />
+
+在得到这些小的页面文本区域块后，我们使用pytesseract库进行OCR文本识别，将文本识别的内容作为TextCNN神经网络的数据输入，当然，输入之前需要先删除文本中的停用词，因为这些停用词对神经网络的判断是有弊无利的。
+
+最后就是通过已经训练好的TextCNN模型对文本内容进行预测，将预测得到的书籍类型作为输出，然后我们在run.py中执行JQ8900Controller中的函数，通过树莓派向JQ8900语音播报模块发送字节，选择保存在JQ8900语音播报模块中的语音文件。
+
+至此，该项目的所有功能实现。
+
 ## 项目涉及到的第三方工具库
 
-| Package               | Version              |
-| --------------------- | -------------------- |
-| aligo                 | 6.2.4                |
-| certifi               | 2024.8.30            |
-| charset-normalizer    | 3.3.2                |
-| colorama              | 0.4.6                |
-| coloredlogs           | 15.0.1               |
-| contourpy             | 1.3.0                |
-| cycler                | 0.12.1               |
-| datclass              | 0.2.28               |
-| fonttools             | 4.53.1               |
-| h5py                  | 3.12.1               |
-| humanfriendly         | 10.0                 |
-| idna                  | 3.8                  |
-| imageio               | 2.37.0               |
-| joblib                | 1.4.2                |
-| kiwisolver            | 1.4.6                |
-| lazy_loader           | 0.4                  |
-| matplotlib            | 3.7.1                |
-| networkx              | 3.4.2                |
-| numpy                 | 1.25.0               |
-| opencv-contrib-python | 4.11.0.86            |
-| packaging             | 24.1                 |
-| pandas                | 2.0.3                |
-| pillow                | 10.4.0               |
-| pip                   | 24.2                 |
-| protobuf              | 5.28.0               |
-| pyparsing             | 3.1.4                |
-| pyreadline3           | 3.5.4                |
-| pyserial              | 3.5                  |
-| pytesseract           | 0.3.13               |
-| python-dateutil       | 2.9.0.post0          |
-| pytz                  | 2024.1               |
-| qrcode                | 8.0                  |
-| qrcode-terminal       | 0.8                  |
-| requests              | 2.32.3               |
-| scikit-image          | 0.25.2               |
-| scikit-learn          | 1.5.1                |
-| scipy                 | 1.14.1               |
-| seaborn               | 0.13.2               |
-| setuptools            | 72.1.0               |
-| six                   | 1.16.0               |
-| tensorboardX          | 2.6.2.2              |
-| thop                  | 0.1.1.post2209072238 |
-| threadpoolctl         | 3.5.0                |
-| tifffile              | 2025.2.18            |
-| torch                 | 1.12.0+cu116         |
-| torchaudio            | 0.12.0+cu116         |
-| torchvision           | 0.13.0+cu116         |
-| tqdm                  | 4.66.5               |
-| typing_extensions     | 4.12.2               |
-| tzdata                | 2024.1               |
-| urllib3               | 2.2.2                |
-| wheel                 | 0.43.0               |
+| Package                 | Version              |
+| ----------------------- | -------------------- |
+| absl-py                 | 2.1.0                |
+| albucore                | 0.0.23               |
+| albumentations          | 2.0.5                |
+| aligo                   | 6.2.4                |
+| annotated-types         | 0.7.0                |
+| certifi                 | 2024.8.30            |
+| charset-normalizer      | 3.3.2                |
+| click                   | 8.1.8                |
+| colorama                | 0.4.6                |
+| coloredlogs             | 15.0.1               |
+| contourpy               | 1.3.0                |
+| cycler                  | 0.12.1               |
+| datclass                | 0.2.28               |
+| Deprecated              | 1.2.18               |
+| docker-pycreds          | 0.4.0                |
+| fonttools               | 4.53.1               |
+| gitdb                   | 4.0.12               |
+| GitPython               | 3.1.44               |
+| grpcio                  | 1.70.0               |
+| h5py                    | 3.12.1               |
+| humanfriendly           | 10.0                 |
+| humanize                | 4.12.1               |
+| idna                    | 3.8                  |
+| imageio                 | 2.37.0               |
+| importlib_resources     | 6.5.2                |
+| joblib                  | 1.4.2                |
+| kiwisolver              | 1.4.6                |
+| lazy_loader             | 0.4                  |
+| Markdown                | 3.7                  |
+| markdown-it-py          | 3.0.0                |
+| MarkupSafe              | 3.0.2                |
+| matplotlib              | 3.7.1                |
+| mdurl                   | 0.1.2                |
+| networkx                | 3.4.2                |
+| nibabel                 | 5.3.2                |
+| numpy                   | 1.25.0               |
+| opencv-contrib-python   | 4.11.0.86            |
+| opencv-python-headless  | 4.11.0.86            |
+| packaging               | 24.1                 |
+| pandas                  | 2.0.3                |
+| pillow                  | 10.4.0               |
+| pip                     | 24.2                 |
+| platformdirs            | 4.3.6                |
+| protobuf                | 5.29.3               |
+| psutil                  | 7.0.0                |
+| pydantic                | 2.10.6               |
+| pydantic_core           | 2.27.2               |
+| Pygments                | 2.19.1               |
+| pyparsing               | 3.1.4                |
+| pyreadline3             | 3.5.4                |
+| pyserial                | 3.5                  |
+| pytesseract             | 0.3.13               |
+| python-dateutil         | 2.9.0.post0          |
+| pytz                    | 2024.1               |
+| PyYAML                  | 6.0.2                |
+| qrcode                  | 8.0                  |
+| qrcode-terminal         | 0.8                  |
+| requests                | 2.32.3               |
+| rich                    | 13.9.4               |
+| scikit-image            | 0.25.2               |
+| scikit-learn            | 1.5.1                |
+| scipy                   | 1.14.1               |
+| seaborn                 | 0.13.2               |
+| sentry-sdk              | 2.22.0               |
+| setproctitle            | 1.3.5                |
+| setuptools              | 72.1.0               |
+| shellingham             | 1.5.4                |
+| SimpleITK               | 2.4.1                |
+| simsimd                 | 6.2.1                |
+| six                     | 1.16.0               |
+| smmap                   | 5.0.2                |
+| stringzilla             | 3.12.2               |
+| tensorboard             | 2.19.0               |
+| tensorboard-data-server | 0.7.2                |
+| tensorboardX            | 2.6.2.2              |
+| thop                    | 0.1.1.post2209072238 |
+| threadpoolctl           | 3.5.0                |
+| tifffile                | 2025.2.18            |
+| torch                   | 1.12.0+cu116         |
+| torchaudio              | 0.12.0+cu116         |
+| torchio                 | 0.20.4               |
+| torchvision             | 0.13.0+cu116         |
+| tqdm                    | 4.66.5               |
+| typer                   | 0.15.2               |
+| typing_extensions       | 4.12.2               |
+| tzdata                  | 2024.1               |
+| urllib3                 | 2.2.2                |
+| wandb                   | 0.19.8               |
+| Werkzeug                | 3.1.3                |
+| wheel                   | 0.43.0               |
+| wrapt                   | 1.17.2               |
 
 ## 在系统开发过程中遇到的问题汇总
 
