@@ -611,16 +611,16 @@ def vertical_warp_image(img, which_side, num_cells=40, k=1.3):
 
     # ========== 3. 单元格处理 ==========
     cells_output = []                                                                       # 单元格输出
+    remainder = w % num_cells                                                               # 计算余数
+    
     for i in range(num_cells):
         if i == 0:
             cell_width = max(10, w // num_cells)                                            # 左侧单元格最小宽度
-            remainder = w % num_cells                                                       # 计算余数
             x_left = 0                                                                      # 左侧边界
             x_right = cell_width                                                            # 右侧边界
         else:
             cell_width = w // num_cells
-            remainder = w % num_cells
-            x_left = i * cell_width + (1 if i < remainder else 0)
+            x_left = i * cell_width
             x_right = x_left + cell_width
         
         # 防止越界
@@ -757,6 +757,7 @@ def vertical_warp_image(img, which_side, num_cells=40, k=1.3):
             continue  # 跳过无效图像
         cells_output.append(warped)
     
+    # ========== 4. 单元格拼接 ==========
     # 统一拉伸所有单元格到基准高度
     if not cells_output:
         return img
