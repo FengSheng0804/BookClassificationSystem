@@ -14,6 +14,12 @@ from image_segmentation.models.Unet import UNet
 from dataset_get.pic_to_text_by_OCR import get_pic_text
 from image_segmentation.utils import resize_rgb_image
 
+# 显示图像
+def show_image(img):
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.axis('off')
+    plt.show()
+
 # 处理数据集
 def process_dataset():
     class_name_list = ['movie','classics','education','travel','biology']
@@ -51,17 +57,11 @@ def process_before_OCR(image):
     # 降噪
     blurred = cv2.GaussianBlur(gray, (5,5), 0)
     # 自适应二值化
-    binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, 7)
+    binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 3)
     # 形态学操作
     kernel = np.ones((2,2), np.uint8)
-    processed = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    processed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
     return processed
-
-# 显示图像
-def show_image(img):
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    plt.axis('off')
-    plt.show()
 
 # 删除小的连通组件
 def remove_small_connected_components(mask, min_size):
@@ -119,17 +119,53 @@ def predict_by_unet(origin_path, net, transform):
 
     return masked_img
 
+def adaptive_lighting_enhancement(img_path):
+    """与现有UNet预处理流程集成"""
+    img = cv2.imread(img_path)
+    # 确保输入为BGR格式的uint8图像
+    if img.dtype != np.uint8:
+        img = img.astype(np.uint8)
+    
+    # 自动处理灰度图情况
+    if len(img.shape) == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    elif img.shape[2] == 1:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    
+    # 确保为3通道
+    if img.shape[2] > 3:
+        img = img[:,:,:3]
+
+    # 使用LAB颜色空间优化光照补偿
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    
+    # CLAHE自适应直方图均衡
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    cl = clahe.apply(l)
+    
+    # 亮度通道融合
+    limg = cv2.merge((cl,a,b))
+    return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+
 # =========================裁剪黑边+图像倾斜纠正=========================
 # 自动裁剪黑边
 def auto_remove_black_border(img):
     """基于内容检测自动裁剪黑边"""
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)                                            # 灰度化
-    _, thresh = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)                              # 二值化
+    _, thresh = cv2.threshold(gray, 15, 255, cv2.THRESH_BINARY)                             # 二值化
+
+    # show_image(thresh)
     
     # 寻找内容边界
     contours = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]      # 查找轮廓
     cnt = max(contours, key=cv2.contourArea)                                                # 找到最大轮廓
     x,y,w,h = cv2.boundingRect(cnt)                                                         # 获取最小外接矩形
+
+    # # ==================================== 可视化调试 ====================================
+    # cv2.drawContours(img, [cnt], -1, (0,255,0), 2)
+    # cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 2)
+    # show_image(img)
     
     # 扩展5像素保留边缘
     x = max(0, x-5)                                                                         # 防止越界
@@ -220,13 +256,14 @@ def calculate_rotation_angle(upper, lower):
 def find_book_corners_and_split(img_path):
     # ========== 1. 图像预处理 ==========
     img = cv2.imread(img_path)
+
     h, w = img.shape[:2]
     
     # 多尺度预处理
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)                                            # 灰度化
     blur = cv2.bilateralFilter(gray, 9, 30, 30)                                             # 双边滤波
     edges = cv2.Canny(blur, 30, 100)                                                        # 边缘检测
-    
+
     # 形态学强化轮廓
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))                               # 创建结构元素
     dilated = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=2)                # 闭运算
@@ -866,6 +903,8 @@ def get_text_block(img_path, black_tolerance=0.05):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (15, 15), 0)
 
+    # show_image(blurred)
+
     # ========== 2. 自适应阈值分割 ==========
     thresh = cv2.adaptiveThreshold(blurred, 255, 
                                 cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -882,6 +921,8 @@ def get_text_block(img_path, black_tolerance=0.05):
     cleaned[-border_size:, :] = 0                                                           # 下边缘
     cleaned[:, :border_size] = 0                                                            # 左边缘
     cleaned[:, -border_size:] = 0                                                           # 右边缘
+
+    # show_image(cleaned)
 
     # ========== 5. 轮廓检测 ==========
     contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)     # 查找轮廓
@@ -968,6 +1009,11 @@ def get_text_block(img_path, black_tolerance=0.05):
 
             # 保留有效点
             preserved_points = contour_points[mask]                                         # 保留有效点
+
+            # # ==================================== 可视化调试 ====================================
+            # debug_img = img.copy()
+            # cv2.drawContours(debug_img, [preserved_points.reshape(-1, 1, 2)], -1, (0, 255, 0), 2)
+            # show_image(debug_img)
 
             # 6.7 凸包段插入
             for s_p, e_p, _ in defect_segments:                                             # 遍历凸起段
@@ -1181,13 +1227,19 @@ def smart_horizontal_split(img_path, min_gap=5):
 def process_main(fold_path, img_name, net, transform):
     # 使用Unet进行图像分割
     img_name = img_name.split(".")[0]
+
     print(f"开始Unet图像分割{img_name}.png...")
     masked_img = predict_by_unet(fold_path + img_name + '.png', net, transform)
-    cv2.imwrite(f"./text_classificate/content/images/{img_name}_1_masked.png", masked_img)
+    cv2.imwrite(f"{fold_path}/{img_name}_0_masked.png", masked_img)
+
+    # 动态光照补偿
+    print(f"开始动态光照补偿{img_name}_0_masked.png...")
+    enhanced_img = adaptive_lighting_enhancement(f"{fold_path}/{img_name}_0_masked.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_1_enhanced.png", enhanced_img)
 
     # 旋转校正
-    print(f"开始旋转校正{img_name}_1_masked.png...")
-    rotated = correct_book_rotation(f'{fold_path}/{img_name}_1_masked.png')
+    print(f"开始旋转校正{img_name}_1_enhanced.png...")
+    rotated = correct_book_rotation(f'{fold_path}/{img_name}_1_enhanced.png')
     cv2.imwrite(f"{fold_path}/{img_name}_2_rotated.png", rotated)
 
     # 分页处理
@@ -1318,4 +1370,4 @@ if __name__ == "__main__":
     #         right_text += get_pic_text(f"./text_classificate/content/images/grass_{i}_6_text_block_right_{j}.png")
     #     print(f"右页文字识别结果：{right_text}")
         
-    process_main('./text_classificate/content/images/', 'grass_4_.png', net, transform)
+    process_main('./text_classificate/content/images/', 'grass_4.png', net, transform)
