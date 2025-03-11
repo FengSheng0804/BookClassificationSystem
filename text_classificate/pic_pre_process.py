@@ -1218,25 +1218,25 @@ def process_main(fold_path, img_name, net, transform):
     # 使用Unet进行图像分割
     img_name = img_name.split(".")[0]
 
-    # print(f"开始Unet图像分割{img_name}.png...")
-    # masked_img = predict_by_unet(fold_path + img_name + '.png', net, transform)
-    # cv2.imwrite(f"{fold_path}/{img_name}_0_masked.png", masked_img)
+    print(f"开始Unet图像分割{img_name}.png...")
+    masked_img = predict_by_unet(fold_path + img_name + '.png', net, transform)
+    cv2.imwrite(f"{fold_path}/{img_name}_0_masked.png", masked_img)
 
-    # # 动态光照补偿
-    # print(f"开始动态光照补偿{img_name}_0_masked.png...")
-    # enhanced_img = adaptive_lighting_enhancement(f"{fold_path}/{img_name}_0_masked.png")
-    # cv2.imwrite(f"{fold_path}/{img_name}_1_enhanced.png", enhanced_img)
+    # 动态光照补偿
+    print(f"开始动态光照补偿{img_name}_0_masked.png...")
+    enhanced_img = adaptive_lighting_enhancement(f"{fold_path}/{img_name}_0_masked.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_1_enhanced.png", enhanced_img)
 
-    # # 旋转校正
-    # print(f"开始旋转校正{img_name}_1_enhanced.png...")
-    # rotated = correct_book_rotation(f'{fold_path}/{img_name}_1_enhanced.png')
-    # cv2.imwrite(f"{fold_path}/{img_name}_2_rotated.png", rotated)
+    # 旋转校正
+    print(f"开始旋转校正{img_name}_1_enhanced.png...")
+    rotated = correct_book_rotation(f'{fold_path}/{img_name}_1_enhanced.png')
+    cv2.imwrite(f"{fold_path}/{img_name}_2_rotated.png", rotated)
 
-    # # 分页处理
-    # print(f"开始分页处理{img_name}_2_rotated.png...")
-    # left_page, right_page = find_book_corners_and_split(f"{fold_path}/{img_name}_2_rotated.png")
-    # cv2.imwrite(f"{fold_path}/{img_name}_3_left_page.png", left_page)
-    # cv2.imwrite(f"{fold_path}/{img_name}_3_right_page.png", right_page)
+    # 分页处理
+    print(f"开始分页处理{img_name}_2_rotated.png...")
+    left_page, right_page = find_book_corners_and_split(f"{fold_path}/{img_name}_2_rotated.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_3_left_page.png", left_page)
+    cv2.imwrite(f"{fold_path}/{img_name}_3_right_page.png", right_page)
 
     # 书页矫正
     print(f"开始书页矫正{img_name}_3_left_page.png...")
