@@ -111,15 +111,20 @@ def predict_by_unet(origin_path, net, transform):
     # 先闭运算填补边缘缝隙，再开运算消除毛刺
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
     closed = cv2.morphologyEx(mask_np_after, cv2.MORPH_CLOSE, kernel, iterations=4)
-    smoothed = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=10)
+    mask = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=10)
 
     # show_image(smoothed)
 
-    # 将掩码应用到原图上
-    masked_img = cv2.bitwise_and(img, img, mask=smoothed)
+    return mask
 
-    return masked_img
+# 应用掩码
+def apply_mask(image_path, mask_path):
+    image = cv2.imread(image_path)
+    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    masked_image = cv2.bitwise_and(image, image, mask=mask)
+    return masked_image
 
+# 自适应光照增强
 def adaptive_lighting_enhancement(img_path):
     """与现有UNet预处理流程集成"""
     img = cv2.imread(img_path)
@@ -1219,61 +1224,66 @@ def process_main(fold_path, img_name, net, transform):
     img_name = img_name.split(".")[0]
 
     print(f"开始Unet图像分割{img_name}.png...")
-    masked_img = predict_by_unet(fold_path + img_name + '.png', net, transform)
-    cv2.imwrite(f"{fold_path}/{img_name}_0_masked.png", masked_img)
+    mask = predict_by_unet(fold_path + img_name + '.png', net, transform)
+    cv2.imwrite(f"{fold_path}/{img_name}_0_mask.png", mask)
+
+    # 图像掩膜
+    print(f"开始图像掩膜{img_name}.png...")
+    masked_img = apply_mask(f"{fold_path}/{img_name}.png", f"{fold_path}/{img_name}_0_mask.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_1_masked.png", masked_img)
 
     # 动态光照补偿
-    print(f"开始动态光照补偿{img_name}_0_masked.png...")
-    enhanced_img = adaptive_lighting_enhancement(f"{fold_path}/{img_name}_0_masked.png")
-    cv2.imwrite(f"{fold_path}/{img_name}_1_enhanced.png", enhanced_img)
+    print(f"开始动态光照补偿{img_name}_1_masked.png...")
+    enhanced_img = adaptive_lighting_enhancement(f"{fold_path}/{img_name}_1_masked.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_2_enhanced.png", enhanced_img)
 
     # 旋转校正
-    print(f"开始旋转校正{img_name}_1_enhanced.png...")
-    rotated = correct_book_rotation(f'{fold_path}/{img_name}_1_enhanced.png')
-    cv2.imwrite(f"{fold_path}/{img_name}_2_rotated.png", rotated)
+    print(f"开始旋转校正{img_name}_2_enhanced.png...")
+    rotated = correct_book_rotation(f'{fold_path}/{img_name}_2_enhanced.png')
+    cv2.imwrite(f"{fold_path}/{img_name}_3_rotated.png", rotated)
 
     # 分页处理
-    print(f"开始分页处理{img_name}_2_rotated.png...")
-    left_page, right_page = find_book_corners_and_split(f"{fold_path}/{img_name}_2_rotated.png")
-    cv2.imwrite(f"{fold_path}/{img_name}_3_left_page.png", left_page)
-    cv2.imwrite(f"{fold_path}/{img_name}_3_right_page.png", right_page)
+    print(f"开始分页处理{img_name}_3_rotated.png...")
+    left_page, right_page = find_book_corners_and_split(f"{fold_path}/{img_name}_3_rotated.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_4_left_page.png", left_page)
+    cv2.imwrite(f"{fold_path}/{img_name}_4_right_page.png", right_page)
 
     # 书页矫正
-    print(f"开始书页矫正{img_name}_3_left_page.png...")
-    corrected_left = book_page_rectifier(f"{fold_path}/{img_name}_3_left_page.png", 'left')
-    print(f"开始书页矫正{img_name}_3_right_page.png...")
-    corrected_right = book_page_rectifier(f"{fold_path}/{img_name}_3_right_page.png", 'right')
-    cv2.imwrite(f"{fold_path}/{img_name}_4_corrected_left.png", corrected_left)
-    cv2.imwrite(f"{fold_path}/{img_name}_4_corrected_right.png", corrected_right)
+    print(f"开始书页矫正{img_name}_4_left_page.png...")
+    corrected_left = book_page_rectifier(f"{fold_path}/{img_name}_4_left_page.png", 'left')
+    print(f"开始书页矫正{img_name}_4_right_page.png...")
+    corrected_right = book_page_rectifier(f"{fold_path}/{img_name}_4_right_page.png", 'right')
+    cv2.imwrite(f"{fold_path}/{img_name}_5_corrected_left.png", corrected_left)
+    cv2.imwrite(f"{fold_path}/{img_name}_5_corrected_right.png", corrected_right)
 
     # 文字方向矫正
-    print(f"开始文字方向矫正{img_name}_4_corrected_left.png...")
-    text_corrected_left = rotate_text_image(f"{fold_path}/{img_name}_4_corrected_left.png")
+    print(f"开始文字方向矫正{img_name}_5_corrected_left.png...")
+    text_corrected_left = rotate_text_image(f"{fold_path}/{img_name}_5_corrected_left.png")
     print(f"开始文字方向矫正{img_name}_4_corrected_right.png...")
-    text_corrected_right = rotate_text_image(f"{fold_path}/{img_name}_4_corrected_right.png")
-    cv2.imwrite(f"{fold_path}/{img_name}_5_text_corrected_left.png", text_corrected_left)
-    cv2.imwrite(f"{fold_path}/{img_name}_5_text_corrected_right.png", text_corrected_right)
+    text_corrected_right = rotate_text_image(f"{fold_path}/{img_name}_5_corrected_right.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_6_text_corrected_left.png", text_corrected_left)
+    cv2.imwrite(f"{fold_path}/{img_name}_6_text_corrected_right.png", text_corrected_right)
 
     # 文字区域切割
-    print(f"开始文字区域切割{img_name}_5_text_corrected_left.png...")
-    text_block_left = get_text_block(f"{fold_path}/{img_name}_5_text_corrected_left.png")
+    print(f"开始文字区域切割{img_name}_6_text_corrected_left.png...")
+    text_block_left = get_text_block(f"{fold_path}/{img_name}_6_text_corrected_left.png")
     print(f"开始文字区域切割{img_name}_5_text_corrected_right.png...")
-    text_block_right = get_text_block(f"{fold_path}/{img_name}_5_text_corrected_right.png")
-    cv2.imwrite(f"{fold_path}/{img_name}_6_text_block_left.png", text_block_left)
-    cv2.imwrite(f"{fold_path}/{img_name}_6_text_block_right.png", text_block_right)
+    text_block_right = get_text_block(f"{fold_path}/{img_name}_6_text_corrected_right.png")
+    cv2.imwrite(f"{fold_path}/{img_name}_7_text_block_left.png", text_block_left)
+    cv2.imwrite(f"{fold_path}/{img_name}_7_text_block_right.png", text_block_right)
 
     # 文字区域分块
-    print(f"开始文字区域分块{img_name}_6_text_block_left.png...")
-    text_blocks_left = smart_horizontal_split(f"{fold_path}/{img_name}_6_text_block_left.png")
-    print(f"开始文字区域分块{img_name}_6_text_block_right.png...")
-    text_blocks_right = smart_horizontal_split(f"{fold_path}/{img_name}_6_text_block_right.png")
+    print(f"开始文字区域分块{img_name}_7_text_block_left.png...")
+    text_blocks_left = smart_horizontal_split(f"{fold_path}/{img_name}_7_text_block_left.png")
+    print(f"开始文字区域分块{img_name}_7_text_block_right.png...")
+    text_blocks_right = smart_horizontal_split(f"{fold_path}/{img_name}_7_text_block_right.png")
     print(f"左页分块数量：{len(text_blocks_left)}，右页分块数量：{len(text_blocks_right)}")
     for j, block in enumerate(text_blocks_left):
         block_process = process_before_OCR(block)
-        cv2.imwrite(f"{fold_path}/{img_name}_7_text_block_left_{j}.png", block_process)
+        cv2.imwrite(f"{fold_path}/{img_name}_8_text_block_left_{j}.png", block_process)
     for j, block in enumerate(text_blocks_right):
         block_process = process_before_OCR(block)
-        cv2.imwrite(f"{fold_path}/{img_name}_7_text_block_right_{j}.png", block_process)
+        cv2.imwrite(f"{fold_path}/{img_name}_8_text_block_right_{j}.png", block_process)
 
 if __name__ == "__main__":
     # 创建Unet模型
@@ -1290,5 +1300,7 @@ if __name__ == "__main__":
         transforms.ToTensor()
     ])
 
-    for i in range(1, 11):
-        process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
+    # for i in range(1, 11):
+    #     process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
+
+    process_main('./images/', 'grass_1', net, transform)
