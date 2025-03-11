@@ -33,41 +33,46 @@
 
 先将原始的图片使用训练好的Unet神经网络进行图像分割：得到图像的掩码，再将掩码应用到原图片中，得到删除背景的图片。
 
-<img src=".\images\grass_4_.png" alt="grass_4_" style="zoom: 25%;" />
+<img src=".\images\grass_1.png" alt="grass_1" style="zoom: 25%;" />
 
-<img src=".\images\grass_4_0_mask.png" alt="grass_4_0_mask" style="zoom: 200%;" />
+<img src=".\images\grass_1_0_mask.png" alt="grass_1_0_mask" style="zoom: 200%;" />
 
 然后将掩码应用于原图得到经过掩码处理过的图片
 
-<img src=".\images\grass_4_1_masked.png" alt="grass_4_1_masked" style="zoom:25%;" />
+<img src=".\images\grass_1_1_masked.png" alt="grass_1_1_masked" style="zoom:25%;" />
+
+接着，对图片进行光照自适应补偿
+
+<img src=".\images\grass_1_2_enhanced.png" alt="grass_1_2_enhanced" style="zoom:25%;" />
+
 
 接着，对图像进行全自动分页处理，得到经过自动旋转和切割得到图片
 
-<img src=".\images\grass_4_2_rotated.png" alt="grass_4_2_rotated" style="zoom:25%;" />
+<img src=".\images\grass_1_3_rotated.png" alt="grass_1_3_rotated" style="zoom:25%;" />
 
 然后，对图片进行自动分页处理，得到左页面和右页面
 
-<img src=".\images\grass_4_3_left_page.png" alt="grass_4_3_left_page" style="zoom:25%;" />
+<img src=".\images\grass_1_4_left_page.png" alt="grass_1_4_left_page" style="zoom:25%;" />
 
-<img src=".\images\grass_4_3_right_page.png" alt="grass_4_3_right_page" style="zoom:25%;" />
+<img src=".\images\grass_1_4_right_page.png" alt="grass_1_4_right_page" style="zoom:25%;" />
 
 再接着，将图像进行自动化展平处理，得到经过展平后的作业面和右页面
 
-<img src=".\images\grass_4_4_corrected_left.png" alt="grass_4_4_corrected_left" style="zoom:25%;" />
+<img src=".\images\grass_1_5_corrected_left.png" alt="grass_1_5_corrected_left" style="zoom:25%;" />
 
-<img src=".\images\grass_4_4_corrected_right.png" alt="grass_4_4_corrected_right" style="zoom:25%;" />
+<img src=".\images\grass_1_5_corrected_right.png" alt="grass_1_5_corrected_right" style="zoom:25%;" />
 
 由于展平后会导致文字倾斜，所以我们再进行文本倾斜校正
 
-<img src=".\images\grass_4_5_text_corrected_left.png" alt="grass_4_5_text_corrected_left" style="zoom:25%;" />
+<img src=".\images\grass_1_6_text_corrected_left.png" alt="grass_1_6_text_corrected_left" style="zoom:25%;" />
 
-<img src=".\images\grass_4_5_text_corrected_right.png" alt="grass_4_5_text_corrected_right" style="zoom:25%;" />
+<img src=".\images\grass_1_6_text_corrected_right.png" alt="grass_1_6_text_corrected_right" style="zoom:25%;" />
 
 接下来，我们将自动化裁剪获取到存在文本的区域，
 
-<img src=".\images\grass_4_6_text_block_left.png" alt="grass_4_6_text_block_left" style="zoom:25%;" />
+<img src=".\images\grass_1_7_text_block_left.png" alt="grass_1_7_text_block_left" style="zoom:25%;" />
 
-<img src=".\images\grass_4_6_text_block_right.png" alt="grass_4_6_text_block_right" style="zoom:25%;" />
+<img src=".\images\grass_1_7_text_block_right.png" alt="grass_1_7_text_block_right" style="zoom:25%;" />
 
 最后，我们将根据文本的规模，将文本区域自动切割成三块或者四块，并进行文本的显示效果增强
 
@@ -75,29 +80,29 @@
 
 页面一
 
-<img src=".\images\grass_4_7_text_block_left_0.png" alt="grass_4_7_text_block_left_0" style="zoom: 50%;" />
+<img src=".\images\grass_1_8_text_block_left_0.png" alt="grass_1_8_text_block_left_0" style="zoom: 50%;" />
 
 页面二
 
-<img src=".\images\grass_4_7_text_block_left_1.png" alt="grass_4_7_text_block_left_1" style="zoom: 50%;" />
+<img src=".\images\grass_1_8_text_block_left_1.png" alt="grass_1_8_text_block_left_1" style="zoom: 50%;" />
 
 页面三
 
-<img src=".\images\grass_4_7_text_block_left_2.png" alt="grass_4_7_text_block_left_2" style="zoom:50%;" />
+<img src=".\images\grass_1_8_text_block_left_2.png" alt="grass_1_8_text_block_left_2" style="zoom:50%;" />
 
 **右侧页面**
 
 页面一
 
-<img src=".\images\grass_4_7_text_block_right_0.png" alt="grass_4_7_text_block_right_0" style="zoom:50%;" />
+<img src=".\images\grass_1_8_text_block_right_0.png" alt="grass_1_8_text_block_right_0" style="zoom:50%;" />
 
 页面二
 
-<img src=".\images\grass_4_7_text_block_right_1.png" alt="grass_4_7_text_block_right_1" style="zoom:50%;" />
+<img src=".\images\grass_1_8_text_block_right_1.png" alt="grass_1_8_text_block_right_1" style="zoom:50%;" />
 
 页面三
 
-<img src=".\images\grass_4_7_text_block_right_2.png" alt="grass_4_7_text_block_right_2" style="zoom:50%;" />
+<img src=".\images\grass_1_8_text_block_right_2.png" alt="grass_1_8_text_block_right_2" style="zoom:50%;" />
 
 在得到这些小的页面文本区域块后，我们使用pytesseract库进行OCR文本识别，将文本识别的内容作为TextCNN神经网络的数据输入，当然，输入之前需要先删除文本中的停用词，因为这些停用词对神经网络的判断是有弊无利的。
 
