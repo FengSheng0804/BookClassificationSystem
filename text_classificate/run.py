@@ -11,12 +11,17 @@
 # 作者：高培骏
 # 创建日期：2025年2月25日
 # 版本：1.1
-# 介绍：将函数的功能进行拆分，使得代码更加清晰
+# 新增：将函数的功能进行拆分，使得代码更加清晰
 
 # 作者：高培骏
 # 创建日期：2025年2月26日
 # 版本：1.2
-# 介绍：添加语音播报功能
+# 新增：添加语音播报功能
+
+# 作者：高培骏
+# 创建日期：2025年3月13日
+# 版本：1.3
+# 新增：添加使用服务器上传图片的功能，丰富了图片获取路径
 
 
 import RPi.GPIO as GPIO
@@ -25,8 +30,10 @@ import torch
 import pytesseract
 import pickle as pkl
 import cv2
-from pic_pre_process import binarize_image
+import threading
 from JQ8900Controller import JQ8900Controller
+from pic_pre_process import binarize_image
+from server.server import start_server
 from aligo import Aligo
 from importlib import import_module
 from PIL import Image
@@ -242,17 +249,17 @@ def button_callback2(channel):
         f.write(f"\t\tButton2 pressed\n")
 
     # 获取模型
-    x = import_module('text_classificate_network.models.TextCNN')
+    x = import_module('models.TextRNN')
     config = x.Config('/home/pi/dc/content', 'embedding_SougouNews.npz')
     model = x.Model(config)
-    model.load_state_dict(torch.load('/home/pi/dc/content/saved_dict/TextCNN.ckpt', map_location='cpu', weights_only=True))
+    model.load_state_dict(torch.load('/home/pi/dc/content/saved_dict/TextRNN.ckpt', map_location='cpu', weights_only=True))
     model.eval()
         
     # 获取原图片地址并二值化处理
     pic_path = '/home/pi/dc/content/images/pic.jpg'
 
     # 图片的预处理
-    binary_image = preprocess_image(pic_path, threshold=128)
+    binary_image = preprocess_image(pic_path, threshold = 128)
 
     # 获取图片中的文字
     contents = get_sentences(binary_image)
@@ -347,68 +354,84 @@ def button_callback2(channel):
             time.sleep(1)
 
 
-if __name__ == '__main__':
-    # 设置使用BCM编码
-    GPIO.setmode(GPIO.BCM)
-    # 控制语音播报
-    controller = JQ8900Controller(port='/dev/ttyUSB0', baudrate=9600)
-    # 设置音量（20级）
-    controller.set_volume(20)
+# 设置使用BCM编码
+GPIO.setmode(GPIO.BCM)
+# 控制语音播报
+controller = JQ8900Controller(port='/dev/ttyUSB0', baudrate=9600)
+# 设置音量（20级）
+controller.set_volume(20)
 
-    time.sleep(1)
+time.sleep(1)
 
-    # 设置GPIO
-    # 设置LED灯为输出模式
-    GPIO.setup(4, GPIO.OUT)
-    GPIO.setup(17, GPIO.OUT)
-    GPIO.setup(27, GPIO.OUT)
-    GPIO.setup(22, GPIO.OUT)
-    GPIO.setup(18, GPIO.OUT)
-    # 设置按键为输入模式
-    GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+# 设置GPIO
+# 设置LED灯为输出模式
+GPIO.setup(4, GPIO.OUT)
+GPIO.setup(17, GPIO.OUT)
+GPIO.setup(27, GPIO.OUT)
+GPIO.setup(22, GPIO.OUT)
+GPIO.setup(18, GPIO.OUT)
+# 设置按键为输入模式
+GPIO.setup(20, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(21, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-    # 默认低电平
-    GPIO.output(4, GPIO.LOW)  # 点亮LED
-    GPIO.output(17, GPIO.LOW)  # 点亮LED
-    GPIO.output(27, GPIO.LOW)  # 点亮LED
-    GPIO.output(22, GPIO.LOW)  # 点亮LED
-    GPIO.output(18, GPIO.LOW)  # 点亮LED
+# 默认低电平
+GPIO.output(4, GPIO.LOW)  # 点亮LED
+GPIO.output(17, GPIO.LOW)  # 点亮LED
+GPIO.output(27, GPIO.LOW)  # 点亮LED
+GPIO.output(22, GPIO.LOW)  # 点亮LED
+GPIO.output(18, GPIO.LOW)  # 点亮LED
 
 
-    # 播放初始化声音：6
-    controller.uart2_play(6)
-    # 闪烁两次表示开机自启动成功
-    for i in range(0, 3):
-        GPIO.output(4, GPIO.HIGH)
-        GPIO.output(17, GPIO.HIGH)
-        GPIO.output(27, GPIO.HIGH)
-        GPIO.output(22, GPIO.HIGH)
-        GPIO.output(18, GPIO.HIGH)
-        time.sleep(0.2)
-        GPIO.output(4, GPIO.LOW)
-        GPIO.output(17, GPIO.LOW)
-        GPIO.output(27, GPIO.LOW)
-        GPIO.output(22, GPIO.LOW)
-        GPIO.output(18, GPIO.LOW)
-        time.sleep(0.2)
+# 播放初始化声音：6
+controller.uart2_play(6)
+# 闪烁两次表示开机自启动成功
+for i in range(0, 3):
+    GPIO.output(4, GPIO.HIGH)
+    GPIO.output(17, GPIO.HIGH)
+    GPIO.output(27, GPIO.HIGH)
+    GPIO.output(22, GPIO.HIGH)
+    GPIO.output(18, GPIO.HIGH)
+    time.sleep(0.2)
+    GPIO.output(4, GPIO.LOW)
+    GPIO.output(17, GPIO.LOW)
+    GPIO.output(27, GPIO.LOW)
+    GPIO.output(22, GPIO.LOW)
+    GPIO.output(18, GPIO.LOW)
+    time.sleep(0.2)
 
-    time.sleep(2)
+time.sleep(2)
 
-    # 为按钮引脚添加中断检测，当按钮被按下时（从高电平到低电平），调用button_callback函数
-    GPIO.add_event_detect(20, GPIO.FALLING, callback=button_callback1, bouncetime=200)
-    GPIO.add_event_detect(21, GPIO.FALLING, callback=button_callback2, bouncetime=200)
+# 为按钮引脚添加中断检测，当按钮被按下时（从高电平到低电平），调用button_callback函数
+GPIO.add_event_detect(20, GPIO.FALLING, callback=button_callback1, bouncetime=200)
+GPIO.add_event_detect(21, GPIO.FALLING, callback=button_callback2, bouncetime=200)
 
-    with open('/home/pi/dc/content/log.txt', mode='a') as f:
-        f.write("\n\n")
-        f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-        f.write(f"\t\tInitialize successfully\n")
+with open('/home/pi/dc/content/log.txt', mode='a') as f:
+    f.write("\n\n")
+    f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    f.write(f"\t\tGPIO Initialize successfully\n")
 
-    warning_str = 'Waiting for button'
+# 创建并启动服务器线程
+server_thread = threading.Thread(
+    target=start_server,
+    args=('0.0.0.0', 8080),
+    daemon=True  # 设为守护线程
+)
+server_thread.start()
 
-    try:
-        while True:
-            time.sleep(1)
-            print(warning_str)
-    except KeyboardInterrupt:
-        GPIO.cleanup()
+# 日志记录
+with open('/home/pi/dc/content/log.txt', mode='a') as f:
+    f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+    f.write(f"\t\tServer started successfully \n")
+
+# 语音提示服务器启动
+controller.uart2_play(12)  # 使用12号提示音
+time.sleep(1)
+
+warning_str = 'Waiting for button'
+
+try:
+    while True:
+        time.sleep(1)
+        print(warning_str)
+except KeyboardInterrupt:
+    GPIO.cleanup()

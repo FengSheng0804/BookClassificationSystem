@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片上传</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .upload-box {
+            border: 2px dashed #ccc;
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 500px;
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+        }
+
+        #status {
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>树莓派图片上传</h2>
+    <div class="upload-box">
+        <form id="uploadForm" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" onchange="previewImage(event)">
+            <br>
+            <img id="preview" style="max-width: 200px; display: none;">
+            <br>
+            <input type="submit" value="上传图片">
+        </form>
+        <div id="status"></div>
+    </div>
+
+    <script>
+        function previewImage(event) {
+            const reader = new FileReader();
+            reader.onload = function () {
+                const img = document.getElementById('preview');
+                img.style.display = 'block';
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(event.target.files[0]);
+        }
+
+        document.getElementById('uploadForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = '上传中...';
+
+            const formData = new FormData(e.target);
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.text();
+                statusDiv.textContent = result.includes('成功') ? '✅ 上传成功！' : '❌ 上传失败';
+            } catch (error) {
+                statusDiv.textContent = '❌ 网络错误';
+            }
+        }
+    </script>
+</body>
+
+</html>
