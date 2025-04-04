@@ -169,9 +169,10 @@ def auto_remove_black_border(img):
     x,y,w,h = cv2.boundingRect(cnt)                                                         # 获取最小外接矩形
 
     # # ==================================== 可视化调试 ====================================
-    # cv2.drawContours(img, [cnt], -1, (0,255,0), 2)
-    # cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 2)
-    # show_image(img)
+    # debug_img = img.copy()
+    # cv2.drawContours(debug_img, [cnt], -1, (0,255,0), 2)
+    # cv2.rectangle(debug_img, (x,y), (x+w,y+h), (0,255,0), 2)
+    # show_image(debug_img)
     
     # 扩展5像素保留边缘
     x = max(0, x-5)                                                                         # 防止越界
@@ -467,8 +468,9 @@ def auto_detect_page_corners(img):
 
     # # ==================================== 可视化调试 ====================================
     # # 绘制有效轮廓
-    # cv2.drawContours(img, valid_contours, -1, (0,255,0), 4)
-    # show_image(img)
+    # debug_img = img.copy()
+    # cv2.drawContours(debug_img, valid_contours, -1, (0,255,0), 4)
+    # show_image(debug_img)
 
     # 选择最佳候选
     if not valid_contours:
@@ -726,6 +728,7 @@ def vertical_warp_image(img, which_side, num_cells=40, k=1.3):
         
         # 提取原始单元格区域（整数坐标）
         cell_region = img[0:h, x_left:x_right]                                              # 提取单元格区域
+
         # # ==================================== 可视化调试 ====================================
         # # 绘制单元格区域
         # print(f'单元格区域：{x_left}-{x_right}')
@@ -1032,6 +1035,12 @@ def get_text_block(img_path, black_tolerance=0.05):
             # 6.8 生成最终轮廓
             repaired_cnt = preserved_points.reshape(-1, 1, 2).astype(np.int32)              # 生成最终轮廓
             repaired_contours.append(repaired_cnt)                                          # 保存修复轮廓
+
+            # # ==================================== 可视化调试 ====================================
+            # # 生成最终轮廓
+            # debug_img = img.copy()
+            # cv2.drawContours(debug_img, [repaired_cnt], -1, (0, 255, 0), 2)
+            # show_image(debug_img)
 
         except Exception as e:
             print(f"轮廓处理异常: {str(e)}，保留原始轮廓")
