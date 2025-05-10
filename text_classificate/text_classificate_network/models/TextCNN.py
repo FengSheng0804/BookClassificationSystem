@@ -32,8 +32,8 @@ class Config(object):
         self.learning_rate = 1e-3                                       # 学习率
         self.embed = self.embedding_pretrained.size(1)\
             if self.embedding_pretrained is not None else 300           # 字向量维度
-        self.filter_sizes = (2, 3, 4)                                   # 卷积核尺寸
-        self.num_filters = 256                                          # 卷积核数量(channels数)
+        self.filter_sizes = (2, 3, 4)                                   # 卷积核尺寸：有三种不同的尺寸
+        self.num_filters = 256                                          # 卷积核数量（也是输出通道数，因为每个卷积核生成 1 个通道的特征图，因此输出通道数等于卷积核数量）：每个尺寸的卷积核的数量
 
 
 '''Convolutional Neural Networks for Sentence Classification'''
@@ -46,6 +46,7 @@ class Model(nn.Module):
             self.embedding = nn.Embedding.from_pretrained(config.embedding_pretrained, freeze=False)
         else:
             self.embedding = nn.Embedding(config.n_vocab, config.embed, padding_idx=config.n_vocab - 1)
+        # 对于每种卷积核尺寸，创建一个卷积层 
         self.convs = nn.ModuleList(
             [nn.Conv2d(1, config.num_filters, (k, config.embed)) for k in config.filter_sizes])
         self.dropout = nn.Dropout(config.dropout)
@@ -53,6 +54,7 @@ class Model(nn.Module):
 
     def conv_and_pool(self, x, conv):
         x = F.relu(conv(x)).squeeze(3)
+        # kernel_size=x.size(2)表示池化核大小等于特征图的宽度，即对每个特征图进行"全局"最大池化
         x = F.max_pool1d(x, x.size(2)).squeeze(2)
         return x
 

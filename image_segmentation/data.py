@@ -1,11 +1,10 @@
 import os
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
-import albumentations as A
-from torch.utils.data import Dataset
 from utils import resize_rgb_image
+from torch.utils.data import Dataset
 from torchvision import transforms
+from torch.nn.functional import one_hot
 
 transform = transforms.Compose([
     transforms.ToTensor()
@@ -45,7 +44,6 @@ class MyDataset(Dataset):
 
 
 if __name__ == '__main__':
-    from torch.nn.functional import one_hot
     data = MyDataset("F:\desktop\dataset")
     print(data[0][0].shape)
     print(data[0][1].shape)
