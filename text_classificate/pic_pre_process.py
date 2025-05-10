@@ -1310,4 +1310,4 @@ if __name__ == "__main__":
     # for i in range(1, 11):
     #     process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
 
-    process_main('./test/', 'grass_2', net, transform)
+    process_main('./images/', 'grass_1', net, transform)
