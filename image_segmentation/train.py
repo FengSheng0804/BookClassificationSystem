@@ -12,7 +12,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 weight_path = './image_segmentation/content/params/unet.pth'
-data_path = r'F:/desktop/dataset'
+data_path = 'F:/desktop/dataset'
 save_path = './image_segmentation/content/train_image'
 
 if __name__ == '__main__':

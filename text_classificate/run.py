@@ -219,6 +219,9 @@ def get_sentences(binary_image):
         for word in token:
             words_line.append(vocab.get(word, vocab.get(UNK)))
         
+        # 对应(token序列, 0, 序列长度)
+        # 0表示该序列的标签，后续可以根据需要修改
+        # 这里的seq_len是实际长度，后续可以根据需要修改
         contents.append((words_line, 0, seq_len))
     return contents
 
@@ -298,7 +301,9 @@ def button_callback2(channel):
             f.write(f"\t\tNo valid sentences after preprocessing!\n")
 
     # 构造输入张量
+    # 这里每个句子都已经被处理成了数字序列
     x = torch.tensor([item[0] for item in contents], dtype=torch.long)
+    # 这里的y是序列长度，后续可以根据需要修改
     y = torch.tensor([item[2] for item in contents], dtype=torch.long)
     data = (x, y)
     
@@ -313,7 +318,7 @@ def button_callback2(channel):
         _, predicted = torch.max(outputs, 1)  # 获取最大值索引
         predicted = predicted.tolist()
 
-        # 获取到个数对应的字典
+        # 获取到个数对应的字典，后续使用这个字典的规则进行统计
         num_dict = {
             'movie': predicted.count(0),
             'classics': predicted.count(1),
@@ -321,7 +326,9 @@ def button_callback2(channel):
             'travel': predicted.count(3),
             'biology': predicted.count(4)
         }
+
         text_class = max(num_dict, key=num_dict.get)
+        
         print('The pic_class is ' + text_class)
         with open('/home/pi/dc/content/log.txt', mode='a') as f:
             f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))

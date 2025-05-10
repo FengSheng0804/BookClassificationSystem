@@ -133,9 +133,7 @@ def adaptive_lighting_enhancement(img_path):
         img = img.astype(np.uint8)
     
     # 自动处理灰度图情况
-    if len(img.shape) == 2:
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    elif img.shape[2] == 1:
+    if len(img.shape) == 2 or img.shape[2] == 1:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     
     # 确保为3通道
@@ -1298,7 +1296,7 @@ if __name__ == "__main__":
     # 创建Unet模型
     net=UNet(2).cuda()
     # 加载预训练权重，可以从0-5中选择
-    weight_path = './image_segmentation/content/params/unet_epoch1.pth'         # unet_epoch4：识别草皮的效果更好
+    weight_path = './image_segmentation/content/params/unet_epoch1.pth'
     if os.path.exists(weight_path):
         net.load_state_dict(torch.load(weight_path)['model_state'])
         print('successfully load model')
@@ -1312,4 +1310,4 @@ if __name__ == "__main__":
     # for i in range(1, 11):
     #     process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
 
-    process_main('./images/', 'grass_1', net, transform)
+    process_main('./test/', 'grass_2', net, transform)
