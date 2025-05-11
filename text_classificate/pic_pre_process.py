@@ -16,10 +16,27 @@ from dataset_get.pic_to_text_by_OCR import get_pic_text
 from image_segmentation.utils import resize_rgb_image
 
 # 显示图像
-def show_image(img):
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    plt.axis('off')
-    plt.show()
+def show_image(img, output_path_base='F:/desktop/pic2gif/temp_image'):
+    """
+    将图像保存到文件而非显示，文件名根据执行次数自动递增
+    """
+    # 确保图像是 numpy 数组
+    img = np.array(img)
+    
+    # 计算文件名
+    if not hasattr(show_image, "counter"):
+        show_image.counter = 0  # 初始化计数器
+    show_image.counter += 1
+    output_path = f"{output_path_base}_{show_image.counter}.png"
+    
+    # 保存图像
+    cv2.imwrite(output_path, img)
+    print(f"图像已保存到: {output_path}")
+
+# def show_image(img):
+#     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+#     plt.axis('off')
+#     plt.show()
 
 # 处理数据集
 def process_dataset():
@@ -541,7 +558,7 @@ def horizontal_warp_image(img, src_points):
 
 
 # 书页在垂直方向上展开
-def vertical_warp_image(img, which_side, num_cells=40, k=1.3):
+def vertical_warp_image(img, which_side, num_cells=80, k=1.3):
     # 如果是左边的页面，删除左边的10%
     if which_side == "left":
         img = img[:, int(img.shape[1] * 0.1):]
@@ -608,16 +625,23 @@ def vertical_warp_image(img, which_side, num_cells=40, k=1.3):
             
         valid_contours.append(cnt)
 
-    # # ==================================== 可视化调试 ====================================
-    # # 绘制有效轮廓
-    # debug_img = img.copy()
-    # cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
+    # ==================================== 可视化调试 ====================================
+    # 绘制有效轮廓
+    debug_img = img.copy()
+    cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
     # show_image(debug_img)
 
     # ========== 3. 单元格处理 ==========
     cells_output = []                                                                       # 单元格输出
     remainder = w % num_cells                                                               # 计算余数
     
+    # 单元格边界可视化
+    # debug_img = img.copy()
+    for i in range(1, num_cells):
+        x = i * (w // num_cells)
+        cv2.line(debug_img, (x, 0), (x, h), (255, 0, 0), 2)  # 绘制垂直分割线
+    show_image(debug_img)
+
     for i in range(num_cells):
         if i == 0:
             cell_width = max(10, w // num_cells)                                            # 左侧单元格最小宽度
@@ -1230,9 +1254,9 @@ def process_main(fold_path, img_name, net, transform):
     # 使用Unet进行图像分割
     img_name = img_name.split(".")[0]
 
-    print(f"开始Unet图像分割{img_name}.png...")
-    mask = predict_by_unet(fold_path + img_name + '.png', net, transform)
-    cv2.imwrite(f"{fold_path}/{img_name}_0_mask.png", mask)
+    # print(f"开始Unet图像分割{img_name}.png...")
+    # mask = predict_by_unet(fold_path + img_name + '.png', net, transform)
+    # cv2.imwrite(f"{fold_path}/{img_name}_0_mask.png", mask)
 
     # 图像掩膜
     print(f"开始图像掩膜{img_name}.png...")
@@ -1310,4 +1334,4 @@ if __name__ == "__main__":
     # for i in range(1, 11):
     #     process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
 
-    process_main('./images/', 'grass_1', net, transform)
+    process_main('./images/', 'grass_2', net, transform)
