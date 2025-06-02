@@ -16,6 +16,23 @@ from dataset_get.pic_to_text_by_OCR import get_pic_text
 from image_segmentation.utils import resize_rgb_image
 
 # 显示图像
+# def show_image(img, output_path_base='F:/desktop/pic2gif/temp_image'):
+#     """
+#     将图像保存到文件而非显示，文件名根据执行次数自动递增
+#     """
+#     # 确保图像是 numpy 数组
+#     img = np.array(img)
+    
+#     # 计算文件名
+#     if not hasattr(show_image, "counter"):
+#         show_image.counter = 0  # 初始化计数器
+#     show_image.counter += 1
+#     output_path = f"{output_path_base}_{show_image.counter}.png"
+    
+#     # 保存图像
+#     cv2.imwrite(output_path, img)
+#     print(f"图像已保存到: {output_path}")
+
 def show_image(img):
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.axis('off')
@@ -55,14 +72,18 @@ def binarize_image(image_path, threshold=128):
 def process_before_OCR(image):
     # 灰度化
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # 降噪
-    blurred = cv2.GaussianBlur(gray, (5,5), 0)
+    show_image(gray)
+    # 去噪
+    blurred = cv2.bilateralFilter(gray, 11, 50, 50)
+    show_image(blurred)
     # 自适应二值化
-    binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 3)
-    # 形态学操作
-    kernel = np.ones((2,2), np.uint8)
-    processed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-    return processed
+    binary = cv2.adaptiveThreshold(
+        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY, 25, 15
+    )
+    show_image(binary)
+
+    return binary
 
 # 删除小的连通组件
 def remove_small_connected_components(mask, min_size):
@@ -92,30 +113,33 @@ def remove_small_connected_components(mask, min_size):
 
 # 使用Unet进行图像分割
 def predict_by_unet(origin_path, net, transform):
-    img = cv2.imread(origin_path)
-    resize_img = resize_rgb_image(origin_path)
-    img_data=transform(resize_img).cuda()
-    img_data=torch.unsqueeze(img_data,dim=0)
+    # 读取原始图像
+    original_img = cv2.imread(origin_path)
+    
+    # 调整图像大小并进行预测
+    img = resize_rgb_image(origin_path)
+    img_data = transform(img).cuda()
+    img_data = torch.unsqueeze(img_data, dim=0)
     net.eval()
-    out=net(img_data)
+    out = net(img_data)
     pred_mask = torch.argmax(out, dim=1).squeeze(0)  # [H,W]
+    
     # 转换为numpy并调整数据类型
-    mask_np = pred_mask.byte().cpu().numpy() * 255
+    mask_np = pred_mask.byte().cpu().numpy() * 255   # 直接得到0和255的uint8
 
     # 删除小的连通域
-    mask_np = remove_small_connected_components(mask_np, 2000)
+    mask_np = remove_small_connected_components(mask_np, 500)
 
     # 将掩码恢复成原图大小
-    mask_np_after = cv2.resize(mask_np, (img.shape[1], img.shape[0]))
+    original_size = original_img.shape[1::-1]
+    mask_np_after = cv2.resize(mask_np, original_size, interpolation=cv2.INTER_NEAREST)
 
-    # 先闭运算填补边缘缝隙，再开运算消除毛刺
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-    closed = cv2.morphologyEx(mask_np_after, cv2.MORPH_CLOSE, kernel, iterations=4)
-    mask = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=10)
+    # # 先闭运算填补边缘缝隙，再开运算消除毛刺
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    # closed = cv2.morphologyEx(mask_np_after, cv2.MORPH_CLOSE, kernel, iterations=4)
+    # mask = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=10)
 
-    # show_image(smoothed)
-
-    return mask
+    return mask_np_after
 
 # 应用掩码
 def apply_mask(image_path, mask_path):
@@ -541,7 +565,7 @@ def horizontal_warp_image(img, src_points):
 
 
 # 书页在垂直方向上展开
-def vertical_warp_image(img, which_side, num_cells=40, k=1.3):
+def vertical_warp_image(img, which_side, num_cells=80, k=1.3):
     # 如果是左边的页面，删除左边的10%
     if which_side == "left":
         img = img[:, int(img.shape[1] * 0.1):]
@@ -608,16 +632,23 @@ def vertical_warp_image(img, which_side, num_cells=40, k=1.3):
             
         valid_contours.append(cnt)
 
-    # # ==================================== 可视化调试 ====================================
-    # # 绘制有效轮廓
-    # debug_img = img.copy()
-    # cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
+    # ==================================== 可视化调试 ====================================
+    # 绘制有效轮廓
+    debug_img = img.copy()
+    cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
     # show_image(debug_img)
 
     # ========== 3. 单元格处理 ==========
     cells_output = []                                                                       # 单元格输出
     remainder = w % num_cells                                                               # 计算余数
     
+    # 单元格边界可视化
+    # debug_img = img.copy()
+    for i in range(1, num_cells):
+        x = i * (w // num_cells)
+        cv2.line(debug_img, (x, 0), (x, h), (255, 0, 0), 2)  # 绘制垂直分割线
+    show_image(debug_img)
+
     for i in range(num_cells):
         if i == 0:
             cell_width = max(10, w // num_cells)                                            # 左侧单元格最小宽度
@@ -1310,4 +1341,4 @@ if __name__ == "__main__":
     # for i in range(1, 11):
     #     process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
 
-    process_main('./test/', 'grass_2', net, transform)
+    process_main('./images/', 'grass_2', net, transform)

@@ -34,11 +34,17 @@ model.load_state_dict(torch.load('./text_classificate/content/saved_dict/TextCNN
 model.eval()
     
 # 获取原图片地址并二值化处理
-threshold = 128
-pic_path = './text_classificate/content/images/pic.jpg'
-image = Image.open(pic_path)
-image = image.convert('L')  # 转换为灰度图像
+threshold = 100
+pic_path = 'images/grass_2_7_text_block_left.png'
+origin_image = Image.open(pic_path)
+image = origin_image.convert('L')  # 转换为灰度图像
 binary_image = image.point(lambda p: p > threshold and 255)
+
+# 显示原图
+origin_image.show()
+
+# 显示二值化图片
+binary_image.show()
 
 # 获取二值化图片的文字
 text = pytesseract.image_to_string(binary_image, lang='chi_sim', config='--psm 6 --oem 3')
@@ -67,6 +73,8 @@ text_lists = split_text(text)
 for text_list in text_lists:
     for text in text_list:
         content.append(text)
+
+print('content:', content)
 
 # 使用分词形式
 ues_word = False
@@ -115,10 +123,10 @@ x = torch.tensor([item[0] for item in contents], dtype=torch.long)
 y = torch.tensor([item[2] for item in contents], dtype=torch.long)
 data = (x, y)
 
-# 写入日志
-with open('./text_classificate/content/log.txt', mode='a') as f:
-    f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-    f.write(f'\t\tGet input successfully\n')
+# # 写入日志
+# with open('./text_classificate/content/log.txt', mode='a') as f:
+#     f.write(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+#     f.write(f'\t\tGet input successfully\n')
 
 # 模型预测
 with torch.no_grad():  # 确保不会计算梯度
