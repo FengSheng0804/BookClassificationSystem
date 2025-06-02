@@ -16,27 +16,27 @@ from dataset_get.pic_to_text_by_OCR import get_pic_text
 from image_segmentation.utils import resize_rgb_image
 
 # 显示图像
-def show_image(img, output_path_base='F:/desktop/pic2gif/temp_image'):
-    """
-    将图像保存到文件而非显示，文件名根据执行次数自动递增
-    """
-    # 确保图像是 numpy 数组
-    img = np.array(img)
+# def show_image(img, output_path_base='F:/desktop/pic2gif/temp_image'):
+#     """
+#     将图像保存到文件而非显示，文件名根据执行次数自动递增
+#     """
+#     # 确保图像是 numpy 数组
+#     img = np.array(img)
     
-    # 计算文件名
-    if not hasattr(show_image, "counter"):
-        show_image.counter = 0  # 初始化计数器
-    show_image.counter += 1
-    output_path = f"{output_path_base}_{show_image.counter}.png"
+#     # 计算文件名
+#     if not hasattr(show_image, "counter"):
+#         show_image.counter = 0  # 初始化计数器
+#     show_image.counter += 1
+#     output_path = f"{output_path_base}_{show_image.counter}.png"
     
-    # 保存图像
-    cv2.imwrite(output_path, img)
-    print(f"图像已保存到: {output_path}")
+#     # 保存图像
+#     cv2.imwrite(output_path, img)
+#     print(f"图像已保存到: {output_path}")
 
-# def show_image(img):
-#     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-#     plt.axis('off')
-#     plt.show()
+def show_image(img):
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.axis('off')
+    plt.show()
 
 # 处理数据集
 def process_dataset():
@@ -72,14 +72,18 @@ def binarize_image(image_path, threshold=128):
 def process_before_OCR(image):
     # 灰度化
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # 降噪
-    blurred = cv2.GaussianBlur(gray, (5,5), 0)
+    show_image(gray)
+    # 去噪
+    blurred = cv2.bilateralFilter(gray, 11, 50, 50)
+    show_image(blurred)
     # 自适应二值化
-    binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 3)
-    # 形态学操作
-    kernel = np.ones((2,2), np.uint8)
-    processed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-    return processed
+    binary = cv2.adaptiveThreshold(
+        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY, 25, 15
+    )
+    show_image(binary)
+
+    return binary
 
 # 删除小的连通组件
 def remove_small_connected_components(mask, min_size):
@@ -109,30 +113,33 @@ def remove_small_connected_components(mask, min_size):
 
 # 使用Unet进行图像分割
 def predict_by_unet(origin_path, net, transform):
-    img = cv2.imread(origin_path)
-    resize_img = resize_rgb_image(origin_path)
-    img_data=transform(resize_img).cuda()
-    img_data=torch.unsqueeze(img_data,dim=0)
+    # 读取原始图像
+    original_img = cv2.imread(origin_path)
+    
+    # 调整图像大小并进行预测
+    img = resize_rgb_image(origin_path)
+    img_data = transform(img).cuda()
+    img_data = torch.unsqueeze(img_data, dim=0)
     net.eval()
-    out=net(img_data)
+    out = net(img_data)
     pred_mask = torch.argmax(out, dim=1).squeeze(0)  # [H,W]
+    
     # 转换为numpy并调整数据类型
-    mask_np = pred_mask.byte().cpu().numpy() * 255
+    mask_np = pred_mask.byte().cpu().numpy() * 255   # 直接得到0和255的uint8
 
     # 删除小的连通域
-    mask_np = remove_small_connected_components(mask_np, 2000)
+    mask_np = remove_small_connected_components(mask_np, 500)
 
     # 将掩码恢复成原图大小
-    mask_np_after = cv2.resize(mask_np, (img.shape[1], img.shape[0]))
+    original_size = original_img.shape[1::-1]
+    mask_np_after = cv2.resize(mask_np, original_size, interpolation=cv2.INTER_NEAREST)
 
-    # 先闭运算填补边缘缝隙，再开运算消除毛刺
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-    closed = cv2.morphologyEx(mask_np_after, cv2.MORPH_CLOSE, kernel, iterations=4)
-    mask = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=10)
+    # # 先闭运算填补边缘缝隙，再开运算消除毛刺
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    # closed = cv2.morphologyEx(mask_np_after, cv2.MORPH_CLOSE, kernel, iterations=4)
+    # mask = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel, iterations=10)
 
-    # show_image(smoothed)
-
-    return mask
+    return mask_np_after
 
 # 应用掩码
 def apply_mask(image_path, mask_path):
@@ -1254,9 +1261,9 @@ def process_main(fold_path, img_name, net, transform):
     # 使用Unet进行图像分割
     img_name = img_name.split(".")[0]
 
-    # print(f"开始Unet图像分割{img_name}.png...")
-    # mask = predict_by_unet(fold_path + img_name + '.png', net, transform)
-    # cv2.imwrite(f"{fold_path}/{img_name}_0_mask.png", mask)
+    print(f"开始Unet图像分割{img_name}.png...")
+    mask = predict_by_unet(fold_path + img_name + '.png', net, transform)
+    cv2.imwrite(f"{fold_path}/{img_name}_0_mask.png", mask)
 
     # 图像掩膜
     print(f"开始图像掩膜{img_name}.png...")
