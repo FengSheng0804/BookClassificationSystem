@@ -1327,7 +1327,7 @@ if __name__ == "__main__":
     # 创建Unet模型
     net=UNet(2).cuda()
     # 加载预训练权重，可以从0-5中选择
-    weight_path = './image_segmentation/content/params/unet_epoch1.pth'
+    weight_path = './image_segmentation/content/params/best_unet.pth'
     if os.path.exists(weight_path):
         net.load_state_dict(torch.load(weight_path)['model_state'])
         print('successfully load model')

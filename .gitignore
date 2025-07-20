@@ -1,1 +1,14 @@
-/test.py
+# 测试文件
+test.py
+
+# 数据集
+image_segmentation/content/dataset/
+
+# python缓存文件
+*.pyc
+
+# 权重文件
+image_segmentation/content/params/*.pth
+
+# 训练过程文件
+image_segmentation/content/train_image/*.png

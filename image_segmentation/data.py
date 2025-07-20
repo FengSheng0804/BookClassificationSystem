@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import torch
-from utils import resize_rgb_image
+from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from torch.nn.functional import one_hot
@@ -29,11 +29,11 @@ class MyDataset(Dataset):
         image_path = os.path.join(self.path, 'images', segment_name)
         
         # 加载图像
-        image = resize_rgb_image(image_path)
-        image_tensor = transform(image)  # 假设transform返回FloatTensor
+        image = Image.open(image_path)
+        image_tensor = transform(image)
         
         # 加载并处理mask
-        segment_image = resize_rgb_image(segment_path).convert('L')  # 转为单通道
+        segment_image = Image.open(segment_path).convert('L')  # 转为单通道
         mask_array = np.array(segment_image)
         
         # 关键修改：二值化处理并转换为LongTensor

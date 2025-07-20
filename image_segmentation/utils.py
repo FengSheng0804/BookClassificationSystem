@@ -31,7 +31,7 @@ def batch_process_shape(input_folder, output_folder):
                 # 保存处理结果
                 output_path = os.path.join(output_folder, os.path.basename(image_path))
                 img.save(output_path, quality=95, subsampling=0)  # 保持JPEG高质量
-                print(f"已处理: {os.path.basename(image_path)}")
+                print(f"已旋转: {os.path.basename(image_path)}")
 
         except Exception as e:
             print(f"处理失败: {os.path.basename(image_path)} - {str(e)}")
@@ -51,6 +51,53 @@ def batch_process_shape(input_folder, output_folder):
                     output_folder=output_folder
                 )
 
+# 压缩文件夹中的图像，覆盖原文件
+import os
+from PIL import Image
+
+def compress_images(folder_path, quality=90, max_size=None, preserve_format=True):
+    """
+    压缩文件夹中的图像，覆盖原文件
+    
+    :param folder_path: 图像文件夹路径
+    :param quality: JPEG压缩质量 (1-100)，默认90
+    :param max_size: 最大尺寸限制，如(1024, 1024)，None表示不限制
+    :param preserve_format: 是否保持原格式，默认True
+    """
+    # 支持的文件格式
+    valid_ext = ('.jpg', '.jpeg', '.png', '.webp')
+    
+    for filename in os.listdir(folder_path):
+        if filename.lower().endswith(valid_ext):
+            file_path = os.path.join(folder_path, filename)
+            
+            try:
+                with Image.open(file_path) as img:
+                    original_format = img.format
+                    original_mode = img.mode
+                    
+                    # 如果设置了最大尺寸，进行缩放
+                    if max_size:
+                        img.thumbnail(max_size, Image.LANCZOS)
+                    
+                    # 根据原格式决定保存方式
+                    if preserve_format and original_format in ['PNG', 'WEBP']:
+                        # 保持原格式
+                        save_kwargs = {'optimize': True}
+                        if original_format == 'PNG':
+                            save_kwargs['compress_level'] = 6  # PNG压缩级别
+                        img.save(file_path, original_format, **save_kwargs)
+                    else:
+                        # 转换为JPEG
+                        if img.mode != 'RGB':
+                            img = img.convert('RGB')
+                        img.save(file_path, 'JPEG', quality=quality, optimize=True)
+                    
+                    print(f"已压缩: {filename}")
+                    
+            except Exception as e:
+                print(f"压缩失败: {filename} - {str(e)}")
+
 # 处理RGB图像，使用左上角颜色填充
 def resize_rgb_image(path, size=(1024, 1024)):
     """直接拉伸图像到目标尺寸，不保持宽高比"""
@@ -59,11 +106,12 @@ def resize_rgb_image(path, size=(1024, 1024)):
     
     # 直接拉伸到目标尺寸
     resized_img = img.resize(size, Image.LANCZOS)
+    print(f"已处理图像: {path} -> {size}")
     
     return resized_img
 
 # 增强数据集，生成更多数据
-def get_more_dataset(input_img_dir, input_mask_dir, output_img_dir, output_mask_dir):
+def get_more_dataset(input_img_dir, input_mask_dir, enhance_img_dir, enhance_mask_dir, size=(1024, 1024)):
     def augment_pair(img_path, mask_path, save_idx):
         # 读取图像和掩码
         img = cv2.imread(img_path)
@@ -75,34 +123,38 @@ def get_more_dataset(input_img_dir, input_mask_dir, output_img_dir, output_mask_
         aug_img = augmented['image']
         aug_mask = augmented['mask']
         
+        # 调整到指定大小
+        aug_img = cv2.resize(aug_img, size, interpolation=cv2.INTER_LINEAR)
+        aug_mask = cv2.resize(aug_mask, size, interpolation=cv2.INTER_NEAREST)
+        
         # 生成保存路径
         base_name = os.path.basename(img_path).split(".")[0]
-        img_save_path = os.path.join(output_img_dir, f"{base_name}_aug{save_idx}.png")
-        mask_save_path = os.path.join(output_mask_dir, f"{base_name}_aug{save_idx}_mask.png")
+        img_save_path = os.path.join(enhance_img_dir, f"{base_name}_aug{save_idx}.png")
+        mask_save_path = os.path.join(enhance_mask_dir, f"{base_name}_aug{save_idx}_mask.png")
         
         # 保存增强结果
         cv2.imwrite(img_save_path, cv2.cvtColor(aug_img, cv2.COLOR_RGB2BGR))
         cv2.imwrite(mask_save_path, aug_mask)
 
     
-    aug_times = 5  # 每对数据增强次数
+    aug_times = 10  # 每对数据增强次数（2次 * 5种方法）
 
     # 创建输出目录
-    os.makedirs(output_img_dir, exist_ok=True)
-    os.makedirs(output_mask_dir, exist_ok=True)
+    os.makedirs(enhance_img_dir, exist_ok=True)
+    os.makedirs(enhance_mask_dir, exist_ok=True)
 
     # 定义同步增强管道
     aug_pipeline = A.Compose([
         # 随机90度旋转（无填充问题）
-        A.RandomRotate90(p=0.5),                   
+        A.RandomRotate90(p=1.0),
         
         # 任意角度旋转（设置边缘填充）
         A.Rotate(
             limit=30,
-            border_mode=cv2.BORDER_REPLICATE,  # 关键修改点
+            border_mode=cv2.BORDER_CONSTANT,  # 关键修改点
             value=None,                        # 禁用颜色填充
             mask_value=None,                   # 掩码禁用填充
-            p=0.5
+            p=1.0
         ),
         
         # 平移缩放旋转（已设置border_mode）
@@ -110,9 +162,9 @@ def get_more_dataset(input_img_dir, input_mask_dir, output_img_dir, output_mask_
             shift_limit=0.1,
             scale_limit=0.1,
             rotate_limit=30,
-            border_mode=cv2.BORDER_REPLICATE,  # 边缘复制
+            border_mode=cv2.BORDER_CONSTANT,   # 黑色填充
             value=None,                        # 确保不覆盖
-            p=0.8
+            p=1.0
         ),
         
         # 弹性形变（同步设置）
@@ -120,19 +172,15 @@ def get_more_dataset(input_img_dir, input_mask_dir, output_img_dir, output_mask_
             alpha=120,
             sigma=120 * 0.05,
             alpha_affine=120 * 0.03,
-            border_mode=cv2.BORDER_REPLICATE,  # 添加边界模式
+            border_mode=cv2.BORDER_CONSTANT,
             value=None,
             mask_value=None,
-            p=0.5
+            p=1.0
         ),
-        A.RandomBrightnessContrast(                 # 亮度对比度调整
-            brightness_limit=(-0.2, 0.2), 
-            contrast_limit=(-0.2, 0.2), 
-            p=0.3
-        ),
-        A.HorizontalFlip(p=0.5),                    # 水平翻转
-        A.VerticalFlip(p=0.5),                      # 垂直翻转
-        A.RandomGamma(gamma_limit=(80, 120), p=0.3) # 伽马变换
+
+        A.HorizontalFlip(p=1.0),                    # 水平翻转
+        A.VerticalFlip(p=1.0),                      # 垂直翻转
+        A.RandomGamma(gamma_limit=(80, 120), p=1.0) # 伽马变换
     ], additional_targets={'mask': 'mask'})         # 声明掩码使用相同变换
 
     # 获取原始文件列表
@@ -147,96 +195,82 @@ def get_more_dataset(input_img_dir, input_mask_dir, output_img_dir, output_mask_
         img_path = img_files[idx]
         mask_path = mask_files[idx]
         
-        # 保存原始数据副本
+        # 保存原始数据副本并调整到指定大小
         base_name = os.path.basename(img_path).split(".")[0]
-        cv2.imwrite(os.path.join(output_img_dir, f"{base_name}_aug0.png"), cv2.imread(img_path))
-        cv2.imwrite(os.path.join(output_mask_dir, f"{base_name}_aug0_mask.png"), cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE))
+        orig_img = cv2.resize(cv2.imread(img_path), size, interpolation=cv2.INTER_LINEAR)
+        orig_mask = cv2.resize(cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE), size, interpolation=cv2.INTER_NEAREST)
         
-        # 生成增强数据
+        cv2.imwrite(os.path.join(enhance_img_dir, f"{base_name}_aug0.png"), orig_img)
+        cv2.imwrite(os.path.join(enhance_mask_dir, f"{base_name}_aug0_mask.png"), orig_mask)
+        
+        # 生成增强数据（每种处理执行2次）
         for aug_idx in range(1, aug_times+1):
             augment_pair(img_path, mask_path, aug_idx)
 
     print(f"增强完成！原始数据量: {len(img_files)}，增强后总量: {len(img_files)*(aug_times+1)}")
 
-def process_image_pairs(src_folder, dst_folder, ext='.png'):
+def process_image_pairs(images_path, masks_path, ext='.png'):
     """
     处理图像-掩码配对并重新编号
     
-    :param src_folder: 源文件夹路径
-    :param dst_folder: 目标文件夹路径
+    :param images_path: 原图像文件夹路径
+    :param masks_path: 掩码文件夹路径
     :param ext: 文件扩展名，默认为.png
     """
-    # 创建目标文件夹
-    os.makedirs(dst_folder, exist_ok=True)
-    
     # 收集有效文件对
     pairs = []
-    for filename in os.listdir(src_folder):
-        # 筛选基础图像文件
-        if filename.endswith(ext) and '_mask' not in filename:
+    for filename in os.listdir(images_path):
+        if filename.endswith(ext):
             base_name = filename[:-len(ext)]
             mask_name = f"{base_name}_mask{ext}"
-            mask_path = os.path.join(src_folder, mask_name)
+            mask_path = os.path.join(masks_path, mask_name)
             
             # 验证掩码文件存在
             if os.path.exists(mask_path):
-                pairs.append( (filename, mask_name) )
+                pairs.append((filename, mask_name))
     
     # 打乱文件顺序
     random.shuffle(pairs)
     
-    # 重新编号并复制文件
+    # 重新编号并重命名文件
     for idx, (img_file, mask_file) in enumerate(pairs, start=1):
         # 生成新文件名
         new_img = f"{idx}{ext}"
         new_mask = f"{idx}_mask{ext}"
         
-        # 源文件路径
-        src_img = os.path.join(src_folder, img_file)
-        src_mask = os.path.join(src_folder, mask_file)
+        # 原文件路径
+        old_img_path = os.path.join(images_path, img_file)
+        old_mask_path = os.path.join(masks_path, mask_file)
         
-        # 目标文件路径
-        dst_img = os.path.join(dst_folder, new_img)
-        dst_mask = os.path.join(dst_folder, new_mask)
+        # 新文件路径
+        new_img_path = os.path.join(images_path, new_img)
+        new_mask_path = os.path.join(masks_path, new_mask)
         
-        # 复制文件并保留元数据
-        shutil.copy2(src_img, dst_img)
-        shutil.copy2(src_mask, dst_mask)
-        print(f"Processed: {img_file: <20} => {new_img}")
-        print(f"Processed: {mask_file: <20} => {new_mask}")
+        # 重命名文件
+        os.rename(old_img_path, new_img_path)
+        os.rename(old_mask_path, new_mask_path)
+        
+        print(f"Renamed: {img_file} => {new_img}")
+        print(f"Renamed: {mask_file} => {new_mask}")
+    
+    print(f"Total processed pairs: {len(pairs)}")
 
 if __name__ == '__main__':
-    input_img_dir = "F:\desktop\dataset\images"
-    input_mask_dir = "F:\desktop\dataset\masks"
-    output_img_dir = "F:\desktop\dataset\images_pro"
-    output_mask_dir = "F:\desktop\dataset\masks_pro"
+    input_img_dir = "F:\desktop\dataset\images_old"
+    input_mask_dir = "F:\desktop\dataset\masks_old"
+    enhance_img_dir = "F:\desktop\dataset\images_pro"
+    enhance_mask_dir = "F:\desktop\dataset\masks_pro"
 
-    # # 1. 增强数据集
-    # get_more_dataset(input_img_dir, input_mask_dir, output_img_dir, output_mask_dir)
+    # 创建输出目录
+    os.makedirs(enhance_img_dir, exist_ok=True)
+    os.makedirs(enhance_mask_dir, exist_ok=True)
 
-    # # 2. 批处理文件夹，旋转竖版图片
-    # batch_process_shape(input_img_dir, input_img_dir)
-    # batch_process_shape(input_mask_dir, input_mask_dir)
+    # 1. 图像压缩
+    compress_images(input_img_dir)
+    compress_images(input_mask_dir)
 
-    # # 3. 处理图像-变成正方形
-    # images_paths = os.listdir(input_img_dir)
-    # # 处理原图像
-    # for image_path in images_paths:
-    #     image_path = os.path.join(input_img_dir, image_path)
-    #     img = resize_rgb_image(image_path)
-    #     image_path = os.path.join(output_img_dir, image_path)
-    #     img.save(image_path)
-    # # 处理mask图像
-    # masks_paths = os.listdir(input_mask_dir)
-    # for mask_path in masks_paths:
-    #     mask_path = os.path.join(input_mask_dir, mask_path)
-    #     img = resize_rgb_image(mask_path)
-    #     mask_path = os.path.join(output_mask_dir, mask_path)
-    #     img.save(mask_path)
+    # 2. 增强数据集
+    get_more_dataset(input_img_dir, input_mask_dir, enhance_img_dir, enhance_mask_dir)
 
-    # 4. 处理图像-掩码配对并重新编号
-    src_folder = "F:/desktop/dataset/images"
-    dst_folder = "F:/desktop/dataset/masks"
-    process_image_pairs(src_folder, dst_folder) 
-
-
+    # 3. 处理图像-掩码配对并重新编号
+    process_image_pairs(enhance_img_dir, enhance_mask_dir)
