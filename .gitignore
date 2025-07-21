@@ -3,6 +3,7 @@ test.py
 
 # 数据集
 image_segmentation/content/dataset/
+multimodal_classificate/dataset/
 
 # python缓存文件
 *.pyc
