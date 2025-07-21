@@ -3,13 +3,15 @@ test.py
 
 # 数据集
 image_segmentation/content/dataset/
-multimodal_classificate/dataset/
+multimodel_classificate/dataset/
 
 # python缓存文件
 *.pyc
 
 # 权重文件
-image_segmentation/content/params/*.pth
+image_segmentation/content/params/
+multimodel_classificate/models/weights/
 
 # 训练过程文件
 image_segmentation/content/train_image/*.png
+multimodel_classificate/logs/
