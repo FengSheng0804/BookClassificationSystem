@@ -24,6 +24,12 @@ class Config:
     # 设备配置
     device = "cuda" if __import__('torch').cuda.is_available() else "cpu" 
     
+    # 特征融合策略配置
+    fusion_strategy = "attention"       # 融合策略: "concat", "attention", "cross_attention"
+    projection_dim = 512                # 特征投影维度
+    attention_heads = 8                 # 注意力头数（用于attention策略）
+    fusion_dropout = 0.1                # 融合层dropout率
+    
     # 可视化配置
     enable_visualization = True         # 是否启用实时可视化（不显示窗口，只保存图片）
     visualization_update_interval = 1   # 可视化更新间隔（每几个epoch更新一次）

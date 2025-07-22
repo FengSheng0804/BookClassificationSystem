@@ -252,7 +252,11 @@ def save_training_config(log_file):
         'seed': Config.seed,
         'device': Config.device,
         'clip_model': Config.clip_model_name,
-        'model_path': Config.model_path
+        'model_path': Config.model_path,
+        'fusion_strategy': Config.fusion_strategy,
+        'projection_dim': Config.projection_dim,
+        'attention_heads': Config.attention_heads,
+        'fusion_dropout': Config.fusion_dropout
     }
     
     log_print("=" * 50, log_file)
@@ -285,7 +289,14 @@ def train():
     
     # 初始化模型
     log_print("正在初始化模型...", log_file)
-    model = CLIPFineTuner(num_classes=Config.num_classes, device=device).to(device)
+    model = CLIPFineTuner(
+        num_classes=Config.num_classes, 
+        device=device,
+        fusion_strategy=Config.fusion_strategy,
+        projection_dim=Config.projection_dim,
+        attention_heads=Config.attention_heads,
+        fusion_dropout=Config.fusion_dropout
+    ).to(device)
     log_print("模型初始化完成", log_file)
     
     # 打印模型信息
