@@ -62,8 +62,8 @@ def evaluate():
     log_print("开始模型评估", log_file)
     
     # 检查模型文件是否存在
-    if not os.path.exists(Config.save_path):
-        log_print(f"错误: 找不到模型文件 {Config.save_path}", log_file)
+    if not os.path.exists(Config.model_path):
+        log_print(f"错误: 找不到模型文件 {Config.model_path}", log_file)
         log_print("请先运行 train.py 训练模型", log_file)
         return
     
@@ -76,8 +76,8 @@ def evaluate():
     model = CLIPFineTuner(num_classes=Config.num_classes, device=device).to(device)
     
     try:
-        model.load_state_dict(torch.load(Config.save_path, map_location=device))
-        log_print(f"模型加载成功: {Config.save_path}", log_file)
+        model.load_state_dict(torch.load(Config.model_path, map_location=device))
+        log_print(f"模型加载成功: {Config.model_path}", log_file)
     except Exception as e:
         log_print(f"模型加载失败: {e}", log_file)
         return
@@ -193,7 +193,7 @@ def evaluate():
         'class_names': class_names,
         'predictions': [int(p) for p in all_preds],
         'true_labels': [int(l) for l in all_labels],
-        'model_path': Config.save_path,
+        'model_path': Config.model_path,
         'evaluation_time': datetime.now().isoformat()
     }
     

@@ -3,13 +3,13 @@ class Config:
     配置类：包含训练和评估的所有超参数设置
     """
     # 数据集路径配置
-    train_file = "multimodel_classificate/dataset/train.txt"
-    val_file = "multimodel_classificate/dataset/val.txt"
-    test_file = "multimodel_classificate/dataset/test.txt"
+    dataset_path = "multimodel_classificate/dataset/"
     
     # 模型保存路径配置
-    save_path = "multimodel_classificate/models/weights/best_clip_model.pt"  # 训练得到的最佳模型权重
-    
+    save_path = 'multimodel_classificate/models/weights/'
+
+    model_path = save_path + "best_clip_model.pt"  # 训练得到的最佳模型权重
+
     # CLIP预训练模型配置
     clip_model_name = "ViT-B/32"       # 使用的CLIP模型名称
     clip_model_path = "multimodel_classificate/models/weights/ViT-B-32.pt"  # 预训练CLIP权重路径
@@ -23,3 +23,10 @@ class Config:
     
     # 设备配置
     device = "cuda" if __import__('torch').cuda.is_available() else "cpu" 
+    
+    # 可视化配置
+    enable_visualization = True         # 是否启用实时可视化（不显示窗口，只保存图片）
+    visualization_update_interval = 1   # 可视化更新间隔（每几个epoch更新一次）
+    save_visualization_images = True    # 是否保存可视化图片
+    visualization_dpi = 150             # 保存图片的DPI
+    show_overfitting_warning = True     # 是否显示过拟合警告 

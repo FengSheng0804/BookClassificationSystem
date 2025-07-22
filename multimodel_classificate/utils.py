@@ -10,6 +10,8 @@ import os
 import matplotlib.pyplot as plt
 from datetime import datetime
 import json
+from matplotlib.animation import FuncAnimation
+import matplotlib.patches as mpatches
 
 def set_seed(seed):
     """
@@ -165,6 +167,197 @@ def plot_training_history(train_losses, val_accuracies, save_path=None):
         
     except Exception as e:
         print(f"绘制训练曲线时出错: {e}")
+
+class RealTimeTrainingVisualizer:
+    """
+    实时训练指标可视化类
+    """
+    def __init__(self, save_dir=None, update_interval=1, dpi=150, show_overfitting_warning=True):
+        """
+        初始化可视化器
+        
+        Args:
+            save_dir (str): 图片保存目录
+            update_interval (int): 更新间隔（每几个epoch更新一次）
+            dpi (int): 保存图片的DPI
+            show_overfitting_warning (bool): 是否显示过拟合警告
+        """
+        self.save_dir = save_dir
+        self.update_interval = update_interval
+        self.dpi = dpi
+        self.show_overfitting_warning = show_overfitting_warning
+        self.fig = None
+        self.axes = None
+        
+        # 存储历史数据
+        self.epochs = []
+        self.train_losses = []
+        self.train_accs = []
+        self.val_accs = []
+        self.learning_rates = []
+        self.epoch_times = []
+        
+        # 设置matplotlib后端为Agg（不显示窗口）
+        import matplotlib
+        matplotlib.use('Agg')
+        
+        # 设置中文字体并修复减号显示问题
+        plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'SimHei', 'Arial']
+        plt.rcParams['axes.unicode_minus'] = False  # 使用ASCII减号而不是unicode减号
+        plt.rcParams['font.family'] = 'DejaVu Sans'  # 设置默认字体
+        
+        self.setup_plots()
+    
+    def setup_plots(self):
+        """设置图表布局"""
+        self.fig, self.axes = plt.subplots(2, 3, figsize=(18, 10))
+        self.fig.suptitle('Training Process Real-time Monitor', fontsize=16, fontweight='bold')
+        
+        # 设置子图标题（使用英文避免字体问题）
+        titles = [
+            'Training Loss', 'Training Accuracy', 'Validation Accuracy',
+            'Learning Rate', 'Epoch Time', 'Accuracy Comparison'
+        ]
+        
+        for i, ax in enumerate(self.axes.flat):
+            ax.set_title(titles[i], fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            ax.set_xlabel('Epoch')
+        
+        # 设置y轴标签
+        self.axes[0, 0].set_ylabel('Loss')
+        self.axes[0, 1].set_ylabel('Accuracy')
+        self.axes[0, 2].set_ylabel('Accuracy')
+        self.axes[1, 0].set_ylabel('Learning Rate')
+        self.axes[1, 1].set_ylabel('Time (seconds)')
+        self.axes[1, 2].set_ylabel('Value')
+        
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.93)
+    
+    def update(self, epoch, train_loss, train_acc, val_acc, lr, epoch_time):
+        """
+        更新训练指标
+        
+        Args:
+            epoch (int): 当前轮次
+            train_loss (float): 训练损失
+            train_acc (float): 训练准确率
+            val_acc (float): 验证准确率
+            lr (float): 学习率
+            epoch_time (float): 本轮训练时间
+        """
+        # 添加数据
+        self.epochs.append(epoch + 1)
+        self.train_losses.append(train_loss)
+        self.train_accs.append(train_acc)
+        self.val_accs.append(val_acc)
+        self.learning_rates.append(lr)
+        self.epoch_times.append(epoch_time)
+        
+        # 只在指定间隔更新图表
+        if (epoch + 1) % self.update_interval == 0:
+            self._update_plots()
+    
+    def _update_plots(self):
+        """更新所有子图"""
+        if len(self.epochs) == 0:
+            return
+        
+        # 清空所有子图
+        for ax in self.axes.flat:
+            ax.clear()
+        
+        # 重新设置标题和网格（使用英文）
+        titles = [
+            'Training Loss', 'Training Accuracy', 'Validation Accuracy',
+            'Learning Rate', 'Epoch Time', 'Accuracy Comparison'
+        ]
+        
+        for i, ax in enumerate(self.axes.flat):
+            ax.set_title(titles[i], fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            ax.set_xlabel('Epoch')
+        
+        # 1. 训练损失
+        self.axes[0, 0].plot(self.epochs, self.train_losses, 'b-', linewidth=2, marker='o', markersize=4)
+        self.axes[0, 0].set_ylabel('Loss')
+        
+        # 2. 训练准确率
+        self.axes[0, 1].plot(self.epochs, self.train_accs, 'g-', linewidth=2, marker='s', markersize=4)
+        self.axes[0, 1].set_ylabel('Accuracy')
+        self.axes[0, 1].set_ylim(0, 1)
+        
+        # 3. 验证准确率
+        self.axes[0, 2].plot(self.epochs, self.val_accs, 'r-', linewidth=2, marker='^', markersize=4)
+        self.axes[0, 2].set_ylabel('Accuracy')
+        self.axes[0, 2].set_ylim(0, 1)
+        
+        # 标注最佳验证准确率
+        if self.val_accs:
+            best_val_acc = max(self.val_accs)
+            best_epoch = self.epochs[self.val_accs.index(best_val_acc)]
+            self.axes[0, 2].axhline(y=best_val_acc, color='r', linestyle='--', alpha=0.7)
+            self.axes[0, 2].text(0.02, 0.98, f'Best: {best_val_acc:.4f}\n(Epoch {best_epoch})', 
+                               transform=self.axes[0, 2].transAxes, verticalalignment='top',
+                               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # 4. 学习率变化
+        self.axes[1, 0].plot(self.epochs, self.learning_rates, 'm-', linewidth=2, marker='d', markersize=4)
+        self.axes[1, 0].set_ylabel('Learning Rate')
+        self.axes[1, 0].set_yscale('log')
+        
+        # 5. 每轮训练时间
+        self.axes[1, 1].bar(self.epochs, self.epoch_times, color='orange', alpha=0.7, width=0.6)
+        self.axes[1, 1].set_ylabel('Time (seconds)')
+        
+        # 添加平均时间线
+        if self.epoch_times:
+            avg_time = sum(self.epoch_times) / len(self.epoch_times)
+            self.axes[1, 1].axhline(y=avg_time, color='red', linestyle='--', alpha=0.8, linewidth=2)
+            self.axes[1, 1].text(0.02, 0.98, f'Avg: {avg_time:.1f}s', 
+                               transform=self.axes[1, 1].transAxes, verticalalignment='top',
+                               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # 6. 总体对比（训练vs验证准确率）
+        self.axes[1, 2].plot(self.epochs, self.train_accs, 'g-', linewidth=2, marker='s', 
+                           markersize=4, label='Train Accuracy')
+        self.axes[1, 2].plot(self.epochs, self.val_accs, 'r-', linewidth=2, marker='^', 
+                           markersize=4, label='Val Accuracy')
+        self.axes[1, 2].set_ylabel('Accuracy')
+        self.axes[1, 2].set_ylim(0, 1)
+        self.axes[1, 2].legend()
+        
+        # 添加过拟合检测
+        if len(self.train_accs) > 5 and len(self.val_accs) > 5 and self.show_overfitting_warning:
+            train_trend = np.mean(self.train_accs[-3:]) - np.mean(self.train_accs[-6:-3]) if len(self.train_accs) >= 6 else 0
+            val_trend = np.mean(self.val_accs[-3:]) - np.mean(self.val_accs[-6:-3]) if len(self.val_accs) >= 6 else 0
+            
+            if train_trend > 0.01 and val_trend < -0.01:
+                # 可能过拟合
+                self.axes[1, 2].text(0.02, 0.02, 'Warning: Overfitting', 
+                                   transform=self.axes[1, 2].transAxes, 
+                                   bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8))
+        
+        # 保存图片，每次都覆盖原来的文件
+        if self.save_dir:
+            save_path = os.path.join(self.save_dir, 'training_progress.png')  # 固定文件名，不带epoch
+            self.fig.savefig(save_path, dpi=self.dpi, bbox_inches='tight')
+    
+    def save_final_plot(self, save_path):
+        """保存最终的训练曲线图"""
+        try:
+            self._update_plots()
+            self.fig.savefig(save_path, dpi=300, bbox_inches='tight')
+            print(f"最终训练曲线已保存到: {save_path}")
+        except Exception as e:
+            print(f"保存最终训练曲线时出错: {e}")
+    
+    def close(self):
+        """关闭图表窗口"""
+        if self.fig:
+            plt.close(self.fig)
+        # 不需要plt.ioff()因为我们使用的是Agg后端
 
 def get_device_info():
     """
