@@ -1,3 +1,5 @@
+import os
+
 class Config:
     """
     配置类：包含训练和评估的所有超参数设置
@@ -5,10 +7,49 @@ class Config:
     # 数据集路径配置
     dataset_path = "multimodel_classificate/dataset/"
     
-    # 模型保存路径配置
-    save_path = 'multimodel_classificate/models/weights/'
-
-    model_path = save_path + "best_clip_model.pt"  # 训练得到的最佳模型权重
+    # 基础路径配置
+    base_weights_path = 'multimodel_classificate/models/weights/'
+    base_logs_path = 'multimodel_classificate/logs/'
+    
+    # 根据融合策略动态设置路径
+    @classmethod
+    def get_save_path(cls):
+        """权重保存路径（根据融合策略分类）"""
+        strategy_path = os.path.join(cls.base_weights_path, cls.fusion_strategy)
+        return strategy_path
+    
+    @classmethod
+    def get_logs_path(cls):
+        """日志保存路径（根据融合策略分类）"""
+        strategy_path = os.path.join(cls.base_logs_path, cls.fusion_strategy)
+        return strategy_path
+    
+    @classmethod
+    def get_model_path(cls):
+        """模型权重文件路径"""
+        return os.path.join(cls.get_save_path(), "best_clip_model.pt")
+    
+    @classmethod
+    def get_checkpoint_path(cls):
+        """检查点文件路径"""
+        return os.path.join(cls.get_save_path(), "lastest_checkpoint.pt")
+    
+    # 为了向后兼容，保留属性访问方式
+    @property
+    def save_path(self):
+        return self.get_save_path()
+    
+    @property
+    def logs_path(self):
+        return self.get_logs_path()
+    
+    @property
+    def model_path(self):
+        return self.get_model_path()
+    
+    @property
+    def checkpoint_path(self):
+        return self.get_checkpoint_path()
 
     # CLIP预训练模型配置
     clip_model_name = "ViT-B/32"       # 使用的CLIP模型名称
@@ -25,7 +66,7 @@ class Config:
     device = "cuda" if __import__('torch').cuda.is_available() else "cpu" 
     
     # 特征融合策略配置
-    fusion_strategy = "attention"       # 融合策略: "concat", "attention", "cross_attention"
+    fusion_strategy = "concat"          # 融合策略: "concat", "attention", "cross_attention"
     projection_dim = 512                # 特征投影维度
     attention_heads = 8                 # 注意力头数（用于attention策略）
     fusion_dropout = 0.1                # 融合层dropout率

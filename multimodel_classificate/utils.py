@@ -193,9 +193,17 @@ class RealTimeTrainingVisualizer:
         self.epochs = []
         self.train_losses = []
         self.train_accs = []
+        self.val_losses = []
         self.val_accs = []
         self.learning_rates = []
         self.epoch_times = []
+        
+        # 扩展的详细指标
+        self.gradient_norms = []
+        self.parameter_norms = []
+        self.overfitting_scores = []
+        self.accuracy_differences = []
+        self.loss_differences = []
         
         # 设置matplotlib后端为Agg（不显示窗口）
         import matplotlib
@@ -210,13 +218,14 @@ class RealTimeTrainingVisualizer:
     
     def setup_plots(self):
         """设置图表布局"""
-        self.fig, self.axes = plt.subplots(2, 3, figsize=(18, 10))
-        self.fig.suptitle('Training Process Real-time Monitor', fontsize=16, fontweight='bold')
+        self.fig, self.axes = plt.subplots(3, 4, figsize=(24, 15))
+        self.fig.suptitle('Training Process Comprehensive Monitor', fontsize=18, fontweight='bold')
         
         # 设置子图标题（使用英文避免字体问题）
         titles = [
-            'Training Loss', 'Training Accuracy', 'Validation Accuracy',
-            'Learning Rate', 'Epoch Time', 'Accuracy Comparison'
+            'Training Loss', 'Training Accuracy', 'Validation Loss', 'Validation Accuracy',
+            'Learning Rate', 'Epoch Time', 'Loss Comparison', 'Accuracy Comparison', 
+            'Gradient Norms', 'Parameter Norms', 'Overfitting Score', 'Performance Metrics'
         ]
         
         for i, ax in enumerate(self.axes.flat):
@@ -225,17 +234,23 @@ class RealTimeTrainingVisualizer:
             ax.set_xlabel('Epoch')
         
         # 设置y轴标签
-        self.axes[0, 0].set_ylabel('Loss')
-        self.axes[0, 1].set_ylabel('Accuracy')
-        self.axes[0, 2].set_ylabel('Accuracy')
+        self.axes[0, 0].set_ylabel('Training Loss')
+        self.axes[0, 1].set_ylabel('Training Accuracy')
+        self.axes[0, 2].set_ylabel('Validation Loss')
+        self.axes[0, 3].set_ylabel('Validation Accuracy')
         self.axes[1, 0].set_ylabel('Learning Rate')
         self.axes[1, 1].set_ylabel('Time (seconds)')
-        self.axes[1, 2].set_ylabel('Value')
+        self.axes[1, 2].set_ylabel('Loss Value')
+        self.axes[1, 3].set_ylabel('Accuracy Value')
+        self.axes[2, 0].set_ylabel('Gradient Norm')
+        self.axes[2, 1].set_ylabel('Parameter Norm')
+        self.axes[2, 2].set_ylabel('Overfitting Score')
+        self.axes[2, 3].set_ylabel('Difference Value')
         
         plt.tight_layout()
         plt.subplots_adjust(top=0.93)
     
-    def update(self, epoch, train_loss, train_acc, val_acc, lr, epoch_time):
+    def update(self, epoch, train_loss, train_acc, val_acc, lr, epoch_time, silent=False):
         """
         更新训练指标
         
@@ -246,18 +261,66 @@ class RealTimeTrainingVisualizer:
             val_acc (float): 验证准确率
             lr (float): 学习率
             epoch_time (float): 本轮训练时间
+            silent (bool): 是否静默模式（不保存图片，用于恢复历史数据）
         """
         # 添加数据
         self.epochs.append(epoch + 1)
         self.train_losses.append(train_loss)
-        self.train_accs.append(train_acc)
+        if train_acc is not None:
+            self.train_accs.append(train_acc)
         self.val_accs.append(val_acc)
         self.learning_rates.append(lr)
         self.epoch_times.append(epoch_time)
         
-        # 只在指定间隔更新图表
-        if (epoch + 1) % self.update_interval == 0:
+        # 只在非静默模式且指定间隔更新图表
+        if not silent and (epoch + 1) % self.update_interval == 0:
             self._update_plots()
+    
+    def update_detailed(self, epoch, train_loss, train_acc, val_loss, val_acc, learning_rate, 
+                       epoch_time, gradient_norm=None, parameter_norm=None, overfitting_score=None,
+                       acc_diff=None, loss_diff=None, silent=False):
+        """
+        更新详细训练指标
+        
+        Args:
+            epoch (int): 当前轮次
+            train_loss (float): 训练损失
+            train_acc (float): 训练准确率
+            val_loss (float): 验证损失
+            val_acc (float): 验证准确率
+            learning_rate (float): 学习率
+            epoch_time (float): 本轮训练时间
+            gradient_norm (float): 梯度范数
+            parameter_norm (float): 参数范数
+            overfitting_score (float): 过拟合评分
+            acc_diff (float): 准确率差异
+            loss_diff (float): 损失差异
+            silent (bool): 是否静默模式（不保存图片，用于恢复历史数据）
+        """
+        # 添加基础数据
+        self.epochs.append(epoch + 1)
+        self.train_losses.append(train_loss)
+        self.train_accs.append(train_acc)
+        self.val_losses.append(val_loss)
+        self.val_accs.append(val_acc)
+        self.learning_rates.append(learning_rate)
+        self.epoch_times.append(epoch_time)
+        
+        # 添加详细数据
+        if gradient_norm is not None:
+            self.gradient_norms.append(gradient_norm)
+        if parameter_norm is not None:
+            self.parameter_norms.append(parameter_norm)
+        if overfitting_score is not None:
+            self.overfitting_scores.append(overfitting_score)
+        if acc_diff is not None:
+            self.accuracy_differences.append(acc_diff)
+        if loss_diff is not None:
+            self.loss_differences.append(loss_diff)
+        
+        # 只在非静默模式且指定间隔更新图表
+        if not silent and (epoch + 1) % self.update_interval == 0:
+            self._update_detailed_plots()
     
     def _update_plots(self):
         """更新所有子图"""
@@ -284,7 +347,9 @@ class RealTimeTrainingVisualizer:
         self.axes[0, 0].set_ylabel('Loss')
         
         # 2. 训练准确率
-        self.axes[0, 1].plot(self.epochs, self.train_accs, 'g-', linewidth=2, marker='s', markersize=4)
+        if self.train_accs and len(self.train_accs) > 0:
+            valid_train_epochs = self.epochs[:len(self.train_accs)]  # 确保长度匹配
+            self.axes[0, 1].plot(valid_train_epochs, self.train_accs, 'g-', linewidth=2, marker='s', markersize=4)
         self.axes[0, 1].set_ylabel('Accuracy')
         self.axes[0, 1].set_ylim(0, 1)
         
@@ -320,16 +385,19 @@ class RealTimeTrainingVisualizer:
                                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
         
         # 6. 总体对比（训练vs验证准确率）
-        self.axes[1, 2].plot(self.epochs, self.train_accs, 'g-', linewidth=2, marker='s', 
-                           markersize=4, label='Train Accuracy')
+        if self.train_accs and len(self.train_accs) > 0:
+            valid_train_epochs = self.epochs[:len(self.train_accs)]  # 确保长度匹配
+            self.axes[1, 2].plot(valid_train_epochs, self.train_accs, 'g-', linewidth=2, marker='s', 
+                               markersize=4, label='Train Accuracy')
         self.axes[1, 2].plot(self.epochs, self.val_accs, 'r-', linewidth=2, marker='^', 
                            markersize=4, label='Val Accuracy')
         self.axes[1, 2].set_ylabel('Accuracy')
         self.axes[1, 2].set_ylim(0, 1)
         self.axes[1, 2].legend()
         
-        # 添加过拟合检测
-        if len(self.train_accs) > 5 and len(self.val_accs) > 5 and self.show_overfitting_warning:
+        # 添加过拟合检测（只在有训练准确率数据时）
+        if (len(self.train_accs) > 5 and len(self.val_accs) > 5 and 
+            self.show_overfitting_warning and len(self.train_accs) == len(self.val_accs)):
             train_trend = np.mean(self.train_accs[-3:]) - np.mean(self.train_accs[-6:-3]) if len(self.train_accs) >= 6 else 0
             val_trend = np.mean(self.val_accs[-3:]) - np.mean(self.val_accs[-6:-3]) if len(self.val_accs) >= 6 else 0
             
@@ -337,6 +405,140 @@ class RealTimeTrainingVisualizer:
                 # 可能过拟合
                 self.axes[1, 2].text(0.02, 0.02, 'Warning: Overfitting', 
                                    transform=self.axes[1, 2].transAxes, 
+                                   bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8))
+    
+    def _update_detailed_plots(self):
+        """更新所有详细子图"""
+        if len(self.epochs) == 0:
+            return
+        
+        # 清空所有子图
+        for ax in self.axes.flat:
+            ax.clear()
+        
+        # 重新设置标题和网格（使用英文）
+        titles = [
+            'Training Loss', 'Training Accuracy', 'Validation Loss', 'Validation Accuracy',
+            'Learning Rate', 'Epoch Time', 'Loss Comparison', 'Accuracy Comparison', 
+            'Gradient Norms', 'Parameter Norms', 'Overfitting Score', 'Performance Metrics'
+        ]
+        
+        for i, ax in enumerate(self.axes.flat):
+            ax.set_title(titles[i], fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            ax.set_xlabel('Epoch')
+        
+        # 第一行：基础损失和准确率
+        # 1. 训练损失
+        self.axes[0, 0].plot(self.epochs, self.train_losses, 'b-', linewidth=2, marker='o', markersize=3)
+        self.axes[0, 0].set_ylabel('Training Loss')
+        
+        # 2. 训练准确率
+        if self.train_accs:
+            self.axes[0, 1].plot(self.epochs, self.train_accs, 'g-', linewidth=2, marker='s', markersize=3)
+        self.axes[0, 1].set_ylabel('Training Accuracy')
+        self.axes[0, 1].set_ylim(0, 1)
+        
+        # 3. 验证损失
+        if self.val_losses:
+            self.axes[0, 2].plot(self.epochs, self.val_losses, 'orange', linewidth=2, marker='d', markersize=3)
+        self.axes[0, 2].set_ylabel('Validation Loss')
+        
+        # 4. 验证准确率
+        self.axes[0, 3].plot(self.epochs, self.val_accs, 'r-', linewidth=2, marker='^', markersize=3)
+        self.axes[0, 3].set_ylabel('Validation Accuracy')
+        self.axes[0, 3].set_ylim(0, 1)
+        
+        # 标注最佳验证准确率
+        if self.val_accs:
+            best_val_acc = max(self.val_accs)
+            best_epoch = self.epochs[self.val_accs.index(best_val_acc)]
+            self.axes[0, 3].axhline(y=best_val_acc, color='r', linestyle='--', alpha=0.7)
+            self.axes[0, 3].text(0.02, 0.98, f'Best: {best_val_acc:.4f}\n(Epoch {best_epoch})', 
+                               transform=self.axes[0, 3].transAxes, verticalalignment='top',
+                               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # 第二行：学习率、时间和对比
+        # 5. 学习率变化
+        self.axes[1, 0].plot(self.epochs, self.learning_rates, 'm-', linewidth=2, marker='d', markersize=3)
+        self.axes[1, 0].set_ylabel('Learning Rate')
+        self.axes[1, 0].set_yscale('log')
+        
+        # 6. 每轮训练时间
+        self.axes[1, 1].bar(self.epochs, self.epoch_times, color='orange', alpha=0.7, width=0.6)
+        self.axes[1, 1].set_ylabel('Time (seconds)')
+        
+        # 添加平均时间线
+        if self.epoch_times:
+            avg_time = sum(self.epoch_times) / len(self.epoch_times)
+            self.axes[1, 1].axhline(y=avg_time, color='red', linestyle='--', alpha=0.8, linewidth=2)
+            self.axes[1, 1].text(0.02, 0.98, f'Avg: {avg_time:.1f}s', 
+                               transform=self.axes[1, 1].transAxes, verticalalignment='top',
+                               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # 7. 损失对比
+        self.axes[1, 2].plot(self.epochs, self.train_losses, 'b-', linewidth=2, marker='o', 
+                           markersize=3, label='Train Loss')
+        if self.val_losses:
+            self.axes[1, 2].plot(self.epochs, self.val_losses, 'orange', linewidth=2, marker='d', 
+                               markersize=3, label='Val Loss')
+        self.axes[1, 2].set_ylabel('Loss Value')
+        self.axes[1, 2].legend()
+        
+        # 8. 准确率对比
+        if self.train_accs:
+            self.axes[1, 3].plot(self.epochs, self.train_accs, 'g-', linewidth=2, marker='s', 
+                               markersize=3, label='Train Accuracy')
+        self.axes[1, 3].plot(self.epochs, self.val_accs, 'r-', linewidth=2, marker='^', 
+                           markersize=3, label='Val Accuracy')
+        self.axes[1, 3].set_ylabel('Accuracy Value')
+        self.axes[1, 3].set_ylim(0, 1)
+        self.axes[1, 3].legend()
+        
+        # 第三行：高级指标
+        # 9. 梯度范数
+        if self.gradient_norms:
+            self.axes[2, 0].plot(self.epochs[:len(self.gradient_norms)], self.gradient_norms, 
+                               'purple', linewidth=2, marker='*', markersize=3)
+            self.axes[2, 0].set_ylabel('Gradient Norm')
+            self.axes[2, 0].set_yscale('log')
+        
+        # 10. 参数范数
+        if self.parameter_norms:
+            self.axes[2, 1].plot(self.epochs[:len(self.parameter_norms)], self.parameter_norms, 
+                               'brown', linewidth=2, marker='x', markersize=4)
+            self.axes[2, 1].set_ylabel('Parameter Norm')
+        
+        # 11. 过拟合评分
+        if self.overfitting_scores:
+            epochs_subset = self.epochs[:len(self.overfitting_scores)]
+            self.axes[2, 2].plot(epochs_subset, self.overfitting_scores, 
+                               'red', linewidth=2, marker='v', markersize=3)
+            self.axes[2, 2].axhline(y=0.1, color='orange', linestyle='--', alpha=0.7, label='Warning Line')
+            self.axes[2, 2].set_ylabel('Overfitting Score')
+            self.axes[2, 2].legend()
+        
+        # 12. 性能差异指标
+        if self.accuracy_differences and self.loss_differences:
+            epochs_subset = self.epochs[:len(self.accuracy_differences)]
+            self.axes[2, 3].plot(epochs_subset, self.accuracy_differences, 
+                               'cyan', linewidth=2, marker='h', markersize=3, label='Acc Diff')
+            self.axes[2, 3].plot(epochs_subset[:len(self.loss_differences)], self.loss_differences, 
+                               'magenta', linewidth=2, marker='p', markersize=3, label='Loss Diff')
+            self.axes[2, 3].axhline(y=0, color='black', linestyle='-', alpha=0.5)
+            self.axes[2, 3].set_ylabel('Difference Value')
+            self.axes[2, 3].legend()
+        
+        # 添加过拟合检测
+        if (len(self.train_accs) > 5 and len(self.val_accs) > 5 and 
+            self.show_overfitting_warning and len(self.train_accs) == len(self.val_accs)):
+            train_trend = np.mean(self.train_accs[-3:]) - np.mean(self.train_accs[-6:-3]) if len(self.train_accs) >= 6 else 0
+            val_trend = np.mean(self.val_accs[-3:]) - np.mean(self.val_accs[-6:-3]) if len(self.val_accs) >= 6 else 0
+            
+            if train_trend > 0.01 and val_trend < -0.01:
+                # 可能过拟合
+                self.axes[1, 3].text(0.02, 0.02, 'Warning: Overfitting', 
+                                   transform=self.axes[1, 3].transAxes, 
                                    bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.8))
         
         # 保存图片，每次都覆盖原来的文件
@@ -347,11 +549,54 @@ class RealTimeTrainingVisualizer:
     def save_final_plot(self, save_path):
         """保存最终的训练曲线图"""
         try:
-            self._update_plots()
+            # 如果有详细数据，使用详细绘图
+            if self.val_losses or self.gradient_norms or self.overfitting_scores:
+                self._update_detailed_plots()
+            else:
+                self._update_plots()
             self.fig.savefig(save_path, dpi=300, bbox_inches='tight')
             print(f"最终训练曲线已保存到: {save_path}")
         except Exception as e:
             print(f"保存最终训练曲线时出错: {e}")
+    
+    def save_metrics_summary(self, save_path):
+        """
+        保存训练指标摘要到JSON文件
+        
+        Args:
+            save_path (str): 保存路径
+        """
+        try:
+            metrics_summary = {
+                'training_summary': {
+                    'total_epochs': len(self.epochs),
+                    'best_validation_accuracy': max(self.val_accs) if self.val_accs else 0,
+                    'final_training_loss': self.train_losses[-1] if self.train_losses else 0,
+                    'final_validation_accuracy': self.val_accs[-1] if self.val_accs else 0,
+                    'total_training_time': sum(self.epoch_times) if self.epoch_times else 0,
+                    'average_epoch_time': sum(self.epoch_times) / len(self.epoch_times) if self.epoch_times else 0
+                },
+                'detailed_metrics': {
+                    'epochs': self.epochs,
+                    'train_losses': self.train_losses,
+                    'train_accuracies': self.train_accs,
+                    'val_losses': self.val_losses,
+                    'val_accuracies': self.val_accs,
+                    'learning_rates': self.learning_rates,
+                    'epoch_times': self.epoch_times,
+                    'gradient_norms': self.gradient_norms,
+                    'parameter_norms': self.parameter_norms,
+                    'overfitting_scores': self.overfitting_scores,
+                    'accuracy_differences': self.accuracy_differences,
+                    'loss_differences': self.loss_differences
+                }
+            }
+            
+            with open(save_path, 'w', encoding='utf-8') as f:
+                json.dump(metrics_summary, f, indent=2, ensure_ascii=False)
+            print(f"训练指标摘要已保存到: {save_path}")
+        except Exception as e:
+            print(f"保存训练指标摘要时出错: {e}")
     
     def close(self):
         """关闭图表窗口"""
