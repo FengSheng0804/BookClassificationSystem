@@ -3,11 +3,7 @@
 # 医学：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=15300
 # 历史：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=14400
 # 艺术：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=15200
-# 养生：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=13800
-# 心理：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=14000
-# 科普：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=16300
-# 军事：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=14600
-# 旅游：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=13900
+# 童书：http://read.nlc.cn/yuewen/index?&pageNo=1&categoryId=15800
 
 """
 图书封面爬虫脚本 - 从国家图书馆爬取不同类别的图书封面
@@ -35,11 +31,7 @@ BOOK_CATEGORIES = {
     'medicine': {'name': '医学', 'categoryId': '15300'},
     'history': {'name': '历史', 'categoryId': '14400'},
     'art': {'name': '艺术', 'categoryId': '15200'},
-    'health': {'name': '养生', 'categoryId': '13800'},
-    'psychology': {'name': '心理', 'categoryId': '14000'},
-    'science': {'name': '科普', 'categoryId': '16300'},
-    'military': {'name': '军事', 'categoryId': '14600'},
-    'travel': {'name': '旅游', 'categoryId': '13900'}
+    'children': {'name': '童书', 'categoryId': '15800'}
 }
 
 # 用户代理列表（模拟不同浏览器）
@@ -54,9 +46,9 @@ USER_AGENTS = [
 
 # 爬虫配置
 BASE_URL = 'http://read.nlc.cn/yuewen/index'
-DATASET_DIR = './multimodal_classificate/dataset'
-MAX_PAGES = 100  # 每个类别爬取的最大页数
-DELAY_RANGE = (1, 3)  # 请求间延时范围（秒）
+DATASET_DIR = './multimodel_classificate/dataset'
+MAX_PAGES = 800  # 每个类别爬取的最大页数
+DELAY_RANGE = (1, 2)  # 请求间延时范围（秒）
 MAX_RETRIES = 3  # 最大重试次数
 TIMEOUT = 30  # 请求超时时间
 
