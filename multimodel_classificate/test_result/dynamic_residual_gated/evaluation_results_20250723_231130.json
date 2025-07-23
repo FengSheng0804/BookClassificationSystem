@@ -1,0 +1,30 @@
+{
+  "fusion_strategy": "dynamic_residual_gated",
+  "overall_accuracy": 0.8306438467807661,
+  "total_samples": 6135,
+  "correct_predictions": 5096,
+  "class_accuracies": {
+    "art": 0.8412060301507538,
+    "children": 0.9145473041709054,
+    "history": 0.8911968348170128,
+    "literature": 0.6372950819672131,
+    "medicine": 0.9348249027237354,
+    "novel": 0.7670753064798599
+  },
+  "class_support": {
+    "art": 995,
+    "children": 983,
+    "history": 1011,
+    "literature": 976,
+    "medicine": 1028,
+    "novel": 1142
+  },
+  "model_config": {
+    "projection_dim": 256,
+    "attention_heads": 8,
+    "fusion_dropout": 0.5,
+    "num_classes": 6
+  },
+  "evaluation_time": "2025-07-23 23:11:31",
+  "model_path": "multimodel_classificate/models/weights/dynamic_residual_gated\\best_clip_model.pt"
+}
