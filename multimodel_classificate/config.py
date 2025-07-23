@@ -57,7 +57,7 @@ class Config:
     
     # 模型参数配置
     num_classes = 6                     # 分类类别数
-    batch_size = 64                     # 批处理大小
+    batch_size = 256                    # 批处理大小
     lr = 5e-5                           # 学习率 (微调任务推荐值)
     epochs = 50                         # 训练轮数
     seed = 42                           # 随机种子
@@ -66,10 +66,10 @@ class Config:
     device = "cuda" if __import__('torch').cuda.is_available() else "cpu" 
     
     # 特征融合策略配置
-    fusion_strategy = "attention"          # 融合策略: "concat", "attention", "cross_attention"
+    fusion_strategy = "dynamic_residual_gated"       # 融合策略: "concat", "attention", "dynamic_residual_gated"
     projection_dim = 256                # 特征投影维度
     attention_heads = 8                 # 注意力头数（用于attention策略）
-    fusion_dropout = 0.3                # 融合层dropout率
+    fusion_dropout = 0.5                # 融合层dropout率
     
     # 可视化配置
     enable_visualization = True         # 是否启用实时可视化（不显示窗口，只保存图片）

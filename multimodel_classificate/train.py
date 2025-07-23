@@ -574,7 +574,15 @@ def train():
             
             # 前向传播
             optimizer.zero_grad()
-            logits = model(images, texts)
+            model_output = model(images, texts)
+            
+            # 处理不同融合策略的返回值
+            if isinstance(model_output, tuple):
+                logits, fusion_info = model_output
+            else:
+                logits = model_output
+                fusion_info = None
+                
             loss = criterion(logits, labels)
             
             # 反向传播
@@ -943,7 +951,16 @@ def evaluate_detailed_with_loss(model, loader, criterion, device, class_names, l
     with torch.no_grad():
         for images, texts, labels in val_pbar:
             images, texts, labels = images.to(device), texts.to(device), labels.to(device)
-            logits = model(images, texts)
+            
+            model_output = model(images, texts)
+            
+            # 处理不同融合策略的返回值
+            if isinstance(model_output, tuple):
+                logits, fusion_info = model_output
+            else:
+                logits = model_output
+                fusion_info = None
+                
             loss = criterion(logits, labels)
             total_loss += loss.item()
             
@@ -1012,7 +1029,16 @@ def evaluate_detailed(model, loader, device, class_names, log_file=None):
     with torch.no_grad():
         for images, texts, labels in val_pbar:
             images, texts, labels = images.to(device), texts.to(device), labels.to(device)
-            logits = model(images, texts)
+            
+            model_output = model(images, texts)
+            
+            # 处理不同融合策略的返回值
+            if isinstance(model_output, tuple):
+                logits, fusion_info = model_output
+            else:
+                logits = model_output
+                fusion_info = None
+                
             preds = torch.argmax(logits, dim=1)
             
             correct += (preds == labels).sum().item()
@@ -1072,7 +1098,16 @@ def evaluate(model, loader, device, log_file=None):
     with torch.no_grad():
         for images, texts, labels in eval_pbar:
             images, texts, labels = images.to(device), texts.to(device), labels.to(device)
-            logits = model(images, texts)
+            
+            model_output = model(images, texts)
+            
+            # 处理不同融合策略的返回值
+            if isinstance(model_output, tuple):
+                logits, fusion_info = model_output
+            else:
+                logits = model_output
+                fusion_info = None
+                
             preds = torch.argmax(logits, dim=1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
