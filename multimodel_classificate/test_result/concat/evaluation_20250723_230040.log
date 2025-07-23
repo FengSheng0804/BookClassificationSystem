@@ -1,0 +1,55 @@
+[2025-07-23 23:00:40] 开始模型评估
+[2025-07-23 23:00:40] 融合策略: concat
+[2025-07-23 23:00:40] 结果保存目录: f:\desktop\Python\Python自学\MyPythonProject\DaChuang\multimodel_classificate\test_result\concat
+[2025-07-23 23:00:40] 使用设备: cuda
+[2025-07-23 23:00:40] 正在加载训练好的模型...
+[2025-07-23 23:00:45] 模型加载成功: multimodel_classificate/models/weights/concat\best_clip_model.pt
+[2025-07-23 23:00:45] 正在加载测试数据集...
+[2025-07-23 23:01:01] 测试集样本数: 6135
+[2025-07-23 23:01:01] 测试批次数: 24
+[2025-07-23 23:01:01] 类别列表: ['art', 'children', 'history', 'literature', 'medicine', 'novel']
+[2025-07-23 23:01:01] 开始模型评估...
+[2025-07-23 23:02:22]   已评估: 5120 样本, 当前准确率: 0.7725
+[2025-07-23 23:02:38] ==================================================
+[2025-07-23 23:02:38] 评估结果
+[2025-07-23 23:02:38] ==================================================
+[2025-07-23 23:02:38] 总体准确率: 0.7731 (4743/6135)
+[2025-07-23 23:02:38] 
+详细分类报告:
+[2025-07-23 23:02:38]               precision    recall  f1-score   support
+
+         art     0.8169    0.7487    0.7813       995
+    children     0.8505    0.8800    0.8650       983
+     history     0.7461    0.8140    0.7786      1011
+  literature     0.5893    0.5881    0.5887       976
+    medicine     0.8905    0.8940    0.8922      1028
+       novel     0.7448    0.7154    0.7298      1142
+
+    accuracy                         0.7731      6135
+   macro avg     0.7730    0.7734    0.7726      6135
+weighted avg     0.7733    0.7731    0.7726      6135
+
+[2025-07-23 23:02:38] 
+混淆矩阵:
+[2025-07-23 23:02:38] 行=真实标签, 列=预测标签
+[2025-07-23 23:02:38] 真实\预测          art     children  history   literatu  medicine   novel   
+[2025-07-23 23:02:38] art            745        35        58        86        37        34    
+[2025-07-23 23:02:38] children        29       865        23        22        9         35    
+[2025-07-23 23:02:38] history         32        20       823        72        21        43    
+[2025-07-23 23:02:38] literature      63        41       107       574        32       159    
+[2025-07-23 23:02:38] medicine        20        11        21        48       919        9     
+[2025-07-23 23:02:38] novel           23        45        71       172        14       817    
+[2025-07-23 23:02:38] 
+各类别准确率:
+[2025-07-23 23:02:38]   art: 0.7487 (支持样本: 995)
+[2025-07-23 23:02:38]   children: 0.8800 (支持样本: 983)
+[2025-07-23 23:02:38]   history: 0.8140 (支持样本: 1011)
+[2025-07-23 23:02:38]   literature: 0.5881 (支持样本: 976)
+[2025-07-23 23:02:38]   medicine: 0.8940 (支持样本: 1028)
+[2025-07-23 23:02:38]   novel: 0.7154 (支持样本: 1142)
+[2025-07-23 23:02:39] 混淆矩阵已保存到: f:\desktop\Python\Python自学\MyPythonProject\DaChuang\multimodel_classificate\test_result\concat\confusion_matrix_20250723_230238.png
+[2025-07-23 23:02:40] 分类指标图已保存到: f:\desktop\Python\Python自学\MyPythonProject\DaChuang\multimodel_classificate\test_result\concat\classification_metrics_20250723_230238.png
+[2025-07-23 23:02:40] 评估摘要已保存到: f:\desktop\Python\Python自学\MyPythonProject\DaChuang\multimodel_classificate\test_result\concat\evaluation_summary_20250723_230238.txt
+[2025-07-23 23:02:40] JSON结果已保存到: f:\desktop\Python\Python自学\MyPythonProject\DaChuang\multimodel_classificate\test_result\concat\evaluation_results_20250723_230238.json
+[2025-07-23 23:02:40] ==================================================
+[2025-07-23 23:02:40] 评估完成！

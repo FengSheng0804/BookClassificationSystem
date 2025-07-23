@@ -24,4 +24,8 @@
         ],
         "compounds": []
     },
+    "python.defaultInterpreterPath": "F:\\develop\\Anaconda\\envs\\py310-torch\\python.exe", // 替换为你的路径
+    "github.copilot.advanced": {
+        "debug.overridePythonPath": true // 强制Copilot使用上述解释器
+    }
 }
