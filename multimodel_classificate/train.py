@@ -405,13 +405,46 @@ def train():
     class_names = train_dataset.get_class_names()
     log_print(f"分类类别: {class_names}", log_file)
     
-    # 设置损失函数和优化器
-    criterion = nn.CrossEntropyLoss()
-    # 移除capturable=True以避免CUDA张量要求的问题
-    optimizer = optim.Adam(model.parameters(), lr=Config.lr)
+    # 动态计算类别权重以处理数据不平衡问题
+    class_counts_tensor = train_dataset.get_class_counts_tensor()
+    class_counts_dict = train_dataset.get_class_counts()
     
-    # 可选：添加学习率调度器
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.8)
+    # 计算类别权重（反比例权重）
+    class_weights = 1.0 / class_counts_tensor.float()
+    class_weights = class_weights.to(device)
+    
+    log_print(f"类别样本数量: {class_counts_dict}", log_file)
+    log_print(f"类别权重: {dict(zip(class_names, [f'{w:.6f}' for w in class_weights.tolist()]))}", log_file)
+    
+    # 设置损失函数和优化器（使用加权交叉熵损失）
+    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    
+    # 差分学习率设置：为不同的模块设置不同的学习率
+    # CLIP backbone (如果未冻结) 使用较小学习率，新增层使用标准学习率
+    if hasattr(model, 'clip_model') and any(p.requires_grad for p in model.clip_model.parameters()):
+        # 如果CLIP参数未冻结，使用差分学习率
+        clip_params = []
+        new_params = []
+        
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                if 'clip_model' in name:
+                    clip_params.append(param)
+                else:
+                    new_params.append(param)
+        
+        optimizer = optim.Adam([
+            {'params': clip_params, 'lr': Config.lr * 0.1},  # CLIP层使用1/10学习率
+            {'params': new_params, 'lr': Config.lr}          # 新增层使用标准学习率
+        ])
+        log_print(f"使用差分学习率 - CLIP: {Config.lr * 0.1:.2e}, 新增层: {Config.lr:.2e}", log_file)
+    else:
+        # 标准优化器设置
+        optimizer = optim.Adam(model.parameters(), lr=Config.lr)
+        log_print(f"使用统一学习率: {Config.lr:.2e}", log_file)
+    
+    # 学习率调度器：余弦退火，对微调更友好
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=Config.epochs, eta_min=Config.lr * 0.01)
     
     log_print("损失函数和优化器设置完成", log_file)
     
@@ -654,7 +687,11 @@ def train():
         log_print(f"  性能对比: 准确率差异={acc_diff:.4f}, 损失差异={loss_diff:.4f}", log_file)
         log_print(f"  过拟合评分: {overfitting_score:.4f}", log_file)
         log_print(f"  参数范数: {parameter_norm:.4f}", log_file)
-        log_print(f"  平均梯度范数: {sum(epoch_gradient_norms)/len(epoch_gradient_norms):.4f}", log_file)
+        if epoch_gradient_norms:
+            avg_gradient_norm = sum(epoch_gradient_norms)/len(epoch_gradient_norms)
+            log_print(f"  平均梯度范数: {avg_gradient_norm:.4f}", log_file)
+        else:
+            log_print(f"  平均梯度范数: 0.0000 (无数据)", log_file)
         log_print(f"  用时: {format_time(epoch_time)}, 学习率: {optimizer.param_groups[0]['lr']:.6f}", log_file)
         
         # 过拟合警告
@@ -671,6 +708,9 @@ def train():
         # 更新实时可视化（如果启用）
         if visualizer:
             try:
+                # 计算梯度范数（安全处理空列表）
+                avg_gradient_norm = sum(epoch_gradient_norms)/len(epoch_gradient_norms) if epoch_gradient_norms else 0.0
+                
                 # 传递更多数据给可视化器
                 visualizer.update_detailed(
                     epoch=epoch, 
@@ -680,7 +720,7 @@ def train():
                     val_acc=val_acc, 
                     learning_rate=optimizer.param_groups[0]['lr'],
                     epoch_time=epoch_time,
-                    gradient_norm=sum(epoch_gradient_norms)/len(epoch_gradient_norms),
+                    gradient_norm=avg_gradient_norm,
                     parameter_norm=parameter_norm,
                     overfitting_score=overfitting_score,
                     acc_diff=acc_diff,

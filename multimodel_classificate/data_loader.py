@@ -170,6 +170,31 @@ class MultimodalDataset(Dataset):
         """
         return [class_name for class_name, _ in sorted(self.class_to_idx.items(), key=lambda x: x[1])]
     
+    def get_class_counts(self):
+        """
+        获取各类别的样本数量
+        
+        Returns:
+            dict: 类别名称到样本数量的映射
+        """
+        class_counts = {}
+        for img_path, text, label in self.samples:
+            class_name = self.get_class_names()[label]
+            class_counts[class_name] = class_counts.get(class_name, 0) + 1
+        return class_counts
+    
+    def get_class_counts_tensor(self):
+        """
+        获取各类别样本数量的张量（按类别索引顺序）
+        
+        Returns:
+            torch.Tensor: 类别样本数量张量
+        """
+        class_counts = self.get_class_counts()
+        class_names = self.get_class_names()
+        counts_list = [class_counts.get(name, 0) for name in class_names]
+        return torch.tensor(counts_list)
+    
     def get_sample_info(self, idx):
         """
         获取样本的详细信息
