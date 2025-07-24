@@ -1,0 +1,73 @@
+{
+  "fusion_strategy": "dynamic_residual_gated",
+  "overall_accuracy": 0.8306438467807661,
+  "total_samples": 6135,
+  "correct_predictions": 5096,
+  "macro_metrics": {
+    "precision": 0.8293736424316777,
+    "recall": 0.8310242433849133,
+    "f1_score": 0.8297565333345593
+  },
+  "micro_metrics": {
+    "precision": 0.8306438467807661,
+    "recall": 0.8306438467807661,
+    "f1_score": 0.8306438467807661
+  },
+  "weighted_metrics": {
+    "precision": 0.8289288582989269,
+    "recall": 0.8306438467807661,
+    "f1_score": 0.829353439353636
+  },
+  "class_metrics": {
+    "art": {
+      "accuracy": 0.8412060301507538,
+      "precision": 0.8819810326659642,
+      "recall": 0.8412060301507538,
+      "f1_score": 0.8611111111111112,
+      "support": 995
+    },
+    "children": {
+      "accuracy": 0.9145473041709054,
+      "precision": 0.8954183266932271,
+      "recall": 0.9145473041709054,
+      "f1_score": 0.9048817312531454,
+      "support": 983
+    },
+    "history": {
+      "accuracy": 0.8911968348170128,
+      "precision": 0.8258478460128322,
+      "recall": 0.8911968348170128,
+      "f1_score": 0.857278782112274,
+      "support": 1011
+    },
+    "literature": {
+      "accuracy": 0.6372950819672131,
+      "precision": 0.6797814207650273,
+      "recall": 0.6372950819672131,
+      "f1_score": 0.6578529878371232,
+      "support": 976
+    },
+    "medicine": {
+      "accuracy": 0.9348249027237354,
+      "precision": 0.9152380952380952,
+      "recall": 0.9348249027237354,
+      "f1_score": 0.9249278152069298,
+      "support": 1028
+    },
+    "novel": {
+      "accuracy": 0.7670753064798599,
+      "precision": 0.7779751332149201,
+      "recall": 0.7670753064798599,
+      "f1_score": 0.7724867724867724,
+      "support": 1142
+    }
+  },
+  "model_config": {
+    "projection_dim": 256,
+    "attention_heads": 8,
+    "fusion_dropout": 0.3,
+    "num_classes": 6
+  },
+  "evaluation_time": "2025-07-24 18:01:23",
+  "model_path": "multimodel_classificate/models/weights/dynamic_residual_gated\\best_clip_model.pt"
+}
