@@ -72,16 +72,16 @@ def binarize_image(image_path, threshold=128):
 def process_before_OCR(image):
     # 灰度化
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    show_image(gray)
+    # show_image(gray)
     # 去噪
     blurred = cv2.bilateralFilter(gray, 11, 50, 50)
-    show_image(blurred)
+    # show_image(blurred)
     # 自适应二值化
     binary = cv2.adaptiveThreshold(
         blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, 25, 15
     )
-    show_image(binary)
+    # show_image(binary)
 
     return binary
 
@@ -647,7 +647,7 @@ def vertical_warp_image(img, which_side, num_cells=80, k=1.3):
     for i in range(1, num_cells):
         x = i * (w // num_cells)
         cv2.line(debug_img, (x, 0), (x, h), (255, 0, 0), 2)  # 绘制垂直分割线
-    show_image(debug_img)
+    # show_image(debug_img)
 
     for i in range(num_cells):
         if i == 0:
@@ -1327,7 +1327,7 @@ if __name__ == "__main__":
     # 创建Unet模型
     net=UNet(2).cuda()
     # 加载预训练权重，可以从0-5中选择
-    weight_path = './image_segmentation/content/params/best_unet.pth'
+    weight_path = './image_segmentation/content/params/best_unet_new.pth'
     if os.path.exists(weight_path):
         net.load_state_dict(torch.load(weight_path)['model_state'])
         print('successfully load model')
@@ -1341,4 +1341,4 @@ if __name__ == "__main__":
     # for i in range(1, 11):
     #     process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
 
-    process_main('./images/', 'grass_2', net, transform)
+    process_main('./images/', '33', net, transform)
