@@ -69,7 +69,7 @@ class Config:
     fusion_strategy = "dynamic_residual_gated"       # 融合策略: "concat", "attention", "dynamic_residual_gated"
     projection_dim = 256                # 特征投影维度
     attention_heads = 8                 # 注意力头数（用于attention策略）
-    fusion_dropout = 0.5                # 融合层dropout率
+    fusion_dropout = 0.3                # 融合层dropout率
     
     # 可视化配置
     enable_visualization = True         # 是否启用实时可视化（不显示窗口，只保存图片）

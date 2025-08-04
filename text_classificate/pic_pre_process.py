@@ -72,16 +72,16 @@ def binarize_image(image_path, threshold=128):
 def process_before_OCR(image):
     # 灰度化
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    show_image(gray)
+    # show_image(gray)
     # 去噪
     blurred = cv2.bilateralFilter(gray, 11, 50, 50)
-    show_image(blurred)
+    # show_image(blurred)
     # 自适应二值化
     binary = cv2.adaptiveThreshold(
         blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY, 25, 15
     )
-    show_image(binary)
+    # show_image(binary)
 
     return binary
 
@@ -118,14 +118,22 @@ def predict_by_unet(origin_path, net, transform):
     
     # 调整图像大小并进行预测
     img = resize_rgb_image(origin_path)
+    # 先使用transform对图像进行处理得到张量，在将张量放在GPU上进行计算
     img_data = transform(img).cuda()
+    # 增加batch维度，从[C,H,W]变为[1,C,H,W]
     img_data = torch.unsqueeze(img_data, dim=0)
+    # 设置模型为评估模式
     net.eval()
+    # 前向传播获取预测结果
     out = net(img_data)
+    # 获取每个像素的预测类别，去除batch维度得到[H,W]的掩码
+    # argmax函数实现对out张量在维度1（类别维度）上取最大值的索引，找到最大的那个概率，输出形状为[batch_size, H, W]
+    # 再使用squeeze()函数，移除维度0（前提是batch_size必须=1，即处理单张图片，这一点可以通过上面的unsqueeze实现）
     pred_mask = torch.argmax(out, dim=1).squeeze(0)  # [H,W]
     
     # 转换为numpy并调整数据类型
-    mask_np = pred_mask.byte().cpu().numpy() * 255   # 直接得到0和255的uint8
+    # 使用byte()将数据类型从浮点数转成字节类型，再放到cpu中，再将张量转成Numpy数组，再映射到(0->0*255，1->1*255)
+    mask_np = pred_mask.byte().cpu().numpy() * 255
 
     # 删除小的连通域
     mask_np = remove_small_connected_components(mask_np, 500)
@@ -373,7 +381,7 @@ def find_book_corners_and_split(img_path):
         cluster_centers.append(np.median(cluster, axis=0))                                  # 计算中心点
     
     # 按垂直位置排序
-    final_corners = sorted(cluster_centers, key=lambda p: p[1])                             
+    final_corners = sorted(cluster_centers, key=lambda p: p[1])
 
     # ========== 5. 中缝检测与旋转 ==========
     try:
@@ -539,8 +547,11 @@ def horizontal_warp_image(img, src_points):
 
     # ========== 2. 智能尺寸计算 ==========
     (tl, tr, br, bl) = src_points                                                           # 获取四个角点
-    width = max(np.linalg.norm(tr - tl), np.linalg.norm(br - bl))                           # 计算宽度
-    height = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))                          # 计算高度
+    # 计算目标矩形的宽度：取上边和下边中较长的一条作为目标宽度
+    width = max(np.linalg.norm(tr - tl), np.linalg.norm(br - bl))                           
+
+    # 计算目标矩形的高度：取左边和右边中较长的一条作为目标高度
+    height = max(np.linalg.norm(bl - tl), np.linalg.norm(br - tr))                          
 
     # ========== 3. 构建目标矩形（上下严格等宽） ==========
     dst = np.array([                                                                        # 构建目标矩形
@@ -634,8 +645,8 @@ def vertical_warp_image(img, which_side, num_cells=80, k=1.3):
 
     # ==================================== 可视化调试 ====================================
     # 绘制有效轮廓
-    debug_img = img.copy()
-    cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
+    # debug_img = img.copy()
+    # cv2.drawContours(debug_img, valid_contours, -1, (0, 255, 0), 4)
     # show_image(debug_img)
 
     # ========== 3. 单元格处理 ==========
@@ -644,10 +655,10 @@ def vertical_warp_image(img, which_side, num_cells=80, k=1.3):
     
     # 单元格边界可视化
     # debug_img = img.copy()
-    for i in range(1, num_cells):
-        x = i * (w // num_cells)
-        cv2.line(debug_img, (x, 0), (x, h), (255, 0, 0), 2)  # 绘制垂直分割线
-    show_image(debug_img)
+    # for i in range(1, num_cells):
+    #     x = i * (w // num_cells)
+    #     cv2.line(debug_img, (x, 0), (x, h), (255, 0, 0), 2)  # 绘制垂直分割线
+    # show_image(debug_img)
 
     for i in range(num_cells):
         if i == 0:
@@ -1327,7 +1338,7 @@ if __name__ == "__main__":
     # 创建Unet模型
     net=UNet(2).cuda()
     # 加载预训练权重，可以从0-5中选择
-    weight_path = './image_segmentation/content/params/best_unet.pth'
+    weight_path = './image_segmentation/content/params/best_unet_new.pth'
     if os.path.exists(weight_path):
         net.load_state_dict(torch.load(weight_path)['model_state'])
         print('successfully load model')
@@ -1341,4 +1352,4 @@ if __name__ == "__main__":
     # for i in range(1, 11):
     #     process_main('F:/desktop/images/', f'grass_{i}.png', net, transform)
 
-    process_main('./images/', 'grass_2', net, transform)
+    process_main('./images/', '33', net, transform)

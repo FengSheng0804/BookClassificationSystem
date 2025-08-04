@@ -42,27 +42,27 @@ class UpSample(nn.Module):
     
     def forward(self, x, skip):
         x = self.up(x)
-        # 将上采样后的特征图与跳跃连接的特征图拼接
+        # 将上采样后的特征图与跳跃连接的特征图拼接：沿第一个维度进行拼接
         return torch.cat([x, skip], dim=1)
 
 class UNet(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
         # 编码器 (通道数减半)
-        self.enc1 = Conv_Block(3, 32)        # 原64
+        self.enc1 = Conv_Block(3, 32)        
 
-        self.down1 = DownSample(32)          # 输出64
-        self.enc2 = Conv_Block(64, 64)       # 原128
+        self.down1 = DownSample(32)         # 下采样会扩充通道数输入32→输出64        
+        self.enc2 = Conv_Block(64, 64)       
 
-        self.down2 = DownSample(64)          # 输出128
-        self.enc3 = Conv_Block(128, 128)     # 原256
+        self.down2 = DownSample(64)         # 下采样会扩充通道数输入64→输出128
+        self.enc3 = Conv_Block(128, 128)     
 
-        self.down3 = DownSample(128)         # 输出256
-        self.enc4 = Conv_Block(256, 256)     # 原512
+        self.down3 = DownSample(128)        # 下采样会扩充通道数输入128→输出256
+        self.enc4 = Conv_Block(256, 256)     
 
-        self.down4 = DownSample(256)         # 输出512
+        self.down4 = DownSample(256)        # 下采样会扩充通道数输入256→输出512
         # 桥接层
-        self.bridge = Conv_Block(512, 512)   # 原1024
+        self.bridge = Conv_Block(512, 512)   
         
         # 解码器
         self.up1 = UpSample(512, 256)        # 输入512→输出256，这里执行完上采样后的通道数为256，再加上skip4的256通道，实际输出为512，所以dec1的输入为512
@@ -84,7 +84,6 @@ class UNet(nn.Module):
         )
 
     def forward(self, x):
-        # 编码器
         # 编码器
         skip1 = self.enc1(x)                 # [B,32,H,W]
         down1 = self.down1(skip1)            # [B,64,H/2,W/2]

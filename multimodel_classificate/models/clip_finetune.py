@@ -12,6 +12,17 @@ import math
 
 from config import Config
 
+# 这些在 __init__ 中立即执行 - 定义网络结构
+# self.image_proj = nn.Sequential(
+#     nn.Linear(image_dim, projection_dim),  # ✓ 立即创建线性层对象
+#     nn.ReLU(),                            # ✓ 立即创建激活函数对象
+#     nn.Dropout(dropout)                   # ✓ 立即创建Dropout层对象
+# )
+
+# 但是具体的前向计算要等到调用时才执行
+# 例如：output = self.image_proj(input_tensor)  # 这时才进行实际计算
+
+
 class DynamicResidualGateBlock(nn.Module):
     """
     动态残差门控块
@@ -20,7 +31,8 @@ class DynamicResidualGateBlock(nn.Module):
         super(DynamicResidualGateBlock, self).__init__()
         self.hidden_dim = hidden_dim
         
-        # 门控机制
+        # 门控机制：通过门控机制输出三个特征的权重
+        # 线性层 -> ReLU -> 线性层 -> Softmax
         self.gate_network = nn.Sequential(
             nn.Linear(hidden_dim * 3, hidden_dim),  # 当前特征 + 图像特征 + 文本特征
             nn.ReLU(),
@@ -28,7 +40,8 @@ class DynamicResidualGateBlock(nn.Module):
             nn.Softmax(dim=-1)
         )
         
-        # 特征变换网络
+        # 特征变换网络：通过特征变换网络对输入特征进行变换
+        # 线性层 -> LayerNorm -> ReLU -> Dropout -> 线性层
         self.transform_network = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
@@ -86,26 +99,31 @@ class DynamicResidualGatedFusion(nn.Module):
         super(DynamicResidualGatedFusion, self).__init__()
         self.hidden_dim = hidden_dim
         self.max_layers = max_layers
-        
-        # 特征投影
+
+        # 特征投影：将图像和文本特征投影到隐藏维度
+        # 图像特征 [Batch_size, image_dim] -> [Batch_size, hidden_dim]
         self.image_projection = nn.Linear(image_dim, hidden_dim)
         self.text_projection = nn.Linear(text_dim, hidden_dim)
         
-        # 动态层深度预测器
+        # 动态层深度预测器: 通过初始特征预测最优层数
+        # 输入 [Batch_size, hidden_dim * 2] -> 输出 [Batch_size, max_layers]
+        # 输入为hidden_dim * 2是因为拼接了图像和文本特征
         self.depth_predictor = nn.Sequential(
             nn.Linear(hidden_dim * 2, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, max_layers),
             nn.Softmax(dim=-1)  # 输出每层的使用概率
         )
-        
-        # 多个残差门控层
+
+        # 多个残差门控层：根据动态预测的层数决定使用哪些层
+        # 创建 max_layers个残差门控层
         self.residual_gate_layers = nn.ModuleList([
             DynamicResidualGateBlock(hidden_dim, dropout)
             for _ in range(max_layers)
         ])
         
-        # 自适应权重融合
+        # 自适应权重融合：根据所有层的输出进行自适应融合
+        # 输入 所有层的输出拼接 [Batch_size, hidden_dim * max_layers] -> 输出 [Batch_size, hidden_dim]
         self.adaptive_fusion = nn.Sequential(
             nn.Linear(hidden_dim * max_layers, hidden_dim),
             nn.LayerNorm(hidden_dim),
@@ -133,7 +151,7 @@ class DynamicResidualGatedFusion(nn.Module):
         proj_image = self.image_projection(image_features)
         proj_text = self.text_projection(text_features)
         
-        # 2. 预测最优层数
+        # 2. 预测最优层数：layer_weights得到的是每层的使用概率，是一个权重向量
         initial_concat = torch.cat([proj_image, proj_text], dim=-1)
         layer_weights = self.depth_predictor(initial_concat)  # [B, max_layers]
         
@@ -187,7 +205,7 @@ class MultimodalFusion(nn.Module):
         super(MultimodalFusion, self).__init__()
         
         self.strategy = strategy
-        self.projection_dim = projection_dim
+        self.projection_dim = projection_dim        # 投影维度
         self.attention_heads = attention_heads
         self.dropout = dropout
         
@@ -261,11 +279,12 @@ class MultimodalFusion(nn.Module):
             
             # 自注意力融合
             # 将特征堆叠为序列 [batch_size, 2, projection_dim]
+            # 使用堆叠而不是拼接，因为注意力机制需要处理序列数据
             features = torch.stack([img_proj, text_proj], dim=1)
             
             # 自注意力
             attn_out, _ = self.attention(features, features, features)
-            attn_out = self.norm1(features + attn_out)
+            attn_out = self.norm1(features + attn_out)          # 残差连接后归一化
             
             # FFN
             ffn_out = self.ffn(attn_out)
@@ -409,7 +428,7 @@ class CLIPFineTuner(nn.Module):
     
     def get_features(self, image, text):
         """
-        获取融合后的特征向量（用于特征分析）
+        获取融合后的特征向量（用于特征分析），比forward少了分类器部分，只获取融合特征
         
         Args:
             image (torch.Tensor): 图像张量

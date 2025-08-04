@@ -13,7 +13,7 @@ from utils import set_seed, accuracy
 import numpy as np
 import os
 from datetime import datetime
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, precision_recall_fscore_support
 import json
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -91,7 +91,7 @@ def plot_confusion_matrix(cm, class_names, save_path, title='混淆矩阵'):
     
     return save_path
 
-def plot_classification_metrics(cm, class_names, save_path):
+def plot_classification_metrics(cm, class_names, save_path, precision=None, recall=None, f1=None):
     """
     绘制分类指标图表
     
@@ -99,47 +99,111 @@ def plot_classification_metrics(cm, class_names, save_path):
         cm: 混淆矩阵
         class_names: 类别名称列表
         save_path: 保存路径
+        precision: 精确率数组
+        recall: 召回率数组
+        f1: F1分数数组
     """
-    # 计算每个类别的指标
-    precision = cm.diagonal() / cm.sum(axis=0)
-    recall = cm.diagonal() / cm.sum(axis=1)
-    f1_score = 2 * (precision * recall) / (precision + recall)
+    # 计算准确率
+    class_accuracies = cm.diagonal() / cm.sum(axis=1)
     
-    # 处理可能的除零错误
-    precision = np.nan_to_num(precision)
-    recall = np.nan_to_num(recall)
-    f1_score = np.nan_to_num(f1_score)
-    
-    # 创建图表
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-    
-    # 左侧：各类别指标柱状图
-    x = np.arange(len(class_names))
-    width = 0.25
-    
-    ax1.bar(x - width, precision, width, label='精确率', alpha=0.8)
-    ax1.bar(x, recall, width, label='召回率', alpha=0.8)
-    ax1.bar(x + width, f1_score, width, label='F1分数', alpha=0.8)
-    
-    ax1.set_xlabel('类别')
-    ax1.set_ylabel('分数')
-    ax1.set_title('各类别分类指标')
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(class_names, rotation=45, ha='right')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    ax1.set_ylim(0, 1.1)
-    
-    # 右侧：准确率饼图
-    support = cm.sum(axis=1)
-    colors = plt.cm.Set3(np.linspace(0, 1, len(class_names)))
-    
-    ax2.pie(support, labels=class_names, autopct='%1.1f%%', colors=colors)
-    ax2.set_title('各类别样本分布')
-    
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    plt.close()
+    # 如果没有提供其他指标，只绘制准确率
+    if precision is None or recall is None or f1 is None:
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+        
+        x = np.arange(len(class_names))
+        bars = ax.bar(x, class_accuracies, alpha=0.8, color='skyblue')
+        
+        ax.set_xlabel('类别', fontsize=12)
+        ax.set_ylabel('准确率', fontsize=12)
+        ax.set_title('各类别准确率', fontsize=14, fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(class_names, rotation=45, ha='right')
+        ax.set_ylim(0, 1)
+        
+        # 添加数值标签
+        for bar, acc in zip(bars, class_accuracies):
+            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+                   f'{acc:.3f}', ha='center', va='bottom', fontweight='bold')
+        
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+    else:
+        # 绘制所有指标的对比图
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+        
+        x = np.arange(len(class_names))
+        width = 0.35
+        
+        # 准确率
+        bars1 = ax1.bar(x, class_accuracies, alpha=0.8, color='skyblue')
+        ax1.set_title('准确率', fontweight='bold')
+        ax1.set_ylabel('准确率')
+        ax1.set_ylim(0, 1)
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(class_names, rotation=45, ha='right')
+        
+        # 精确率
+        bars2 = ax2.bar(x, precision, alpha=0.8, color='lightgreen')
+        ax2.set_title('精确率', fontweight='bold')
+        ax2.set_ylabel('精确率')
+        ax2.set_ylim(0, 1)
+        ax2.set_xticks(x)
+        ax2.set_xticklabels(class_names, rotation=45, ha='right')
+        
+        # 召回率
+        bars3 = ax3.bar(x, recall, alpha=0.8, color='lightcoral')
+        ax3.set_title('召回率', fontweight='bold')
+        ax3.set_ylabel('召回率')
+        ax3.set_ylim(0, 1)
+        ax3.set_xticks(x)
+        ax3.set_xticklabels(class_names, rotation=45, ha='right')
+        
+        # F1分数
+        bars4 = ax4.bar(x, f1, alpha=0.8, color='gold')
+        ax4.set_title('F1分数', fontweight='bold')
+        ax4.set_ylabel('F1分数')
+        ax4.set_ylim(0, 1)
+        ax4.set_xticks(x)
+        ax4.set_xticklabels(class_names, rotation=45, ha='right')
+        
+        # 为所有子图添加数值标签
+        for bars, values in [(bars1, class_accuracies), (bars2, precision), 
+                           (bars3, recall), (bars4, f1)]:
+            for bar, value in zip(bars, values):
+                ax = bar.axes
+                ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
+                       f'{value:.3f}', ha='center', va='bottom', fontsize=9)
+        
+        plt.suptitle('分类性能指标对比', fontsize=16, fontweight='bold')
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        # 绘制综合对比图
+        fig, ax = plt.subplots(1, 1, figsize=(14, 8))
+        
+        x = np.arange(len(class_names))
+        width = 0.2
+        
+        bars1 = ax.bar(x - 1.5*width, class_accuracies, width, label='准确率', alpha=0.8, color='skyblue')
+        bars2 = ax.bar(x - 0.5*width, precision, width, label='精确率', alpha=0.8, color='lightgreen')
+        bars3 = ax.bar(x + 0.5*width, recall, width, label='召回率', alpha=0.8, color='lightcoral')
+        bars4 = ax.bar(x + 1.5*width, f1, width, label='F1分数', alpha=0.8, color='gold')
+        
+        ax.set_xlabel('类别', fontsize=12)
+        ax.set_ylabel('分数', fontsize=12)
+        ax.set_title('各类别性能指标综合对比', fontsize=14, fontweight='bold')
+        ax.set_xticks(x)
+        ax.set_xticklabels(class_names, rotation=45, ha='right')
+        ax.legend()
+        ax.set_ylim(0, 1.1)
+        
+        plt.tight_layout()
+        comprehensive_save_path = save_path.replace('.png', '_comprehensive.png')
+        plt.savefig(comprehensive_save_path, dpi=300, bbox_inches='tight')
+        plt.close()
     
     return save_path
 
@@ -256,6 +320,22 @@ def evaluate():
     
     # 详细分类报告
     try:
+        # 计算精确率、召回率、F1分数
+        precision, recall, f1, support = precision_recall_fscore_support(
+            all_labels, all_preds, average=None, zero_division=0
+        )
+        
+        # 计算宏平均和微平均
+        macro_precision, macro_recall, macro_f1, _ = precision_recall_fscore_support(
+            all_labels, all_preds, average='macro', zero_division=0
+        )
+        micro_precision, micro_recall, micro_f1, _ = precision_recall_fscore_support(
+            all_labels, all_preds, average='micro', zero_division=0
+        )
+        weighted_precision, weighted_recall, weighted_f1, _ = precision_recall_fscore_support(
+            all_labels, all_preds, average='weighted', zero_division=0
+        )
+        
         # 生成分类报告
         report = classification_report(
             all_labels, 
@@ -266,6 +346,20 @@ def evaluate():
         )
         log_print("\n详细分类报告:", log_file)
         log_print(report, log_file)
+        
+        # 输出各类别的详细指标
+        log_print("\n各类别详细指标:", log_file)
+        log_print("-" * 80, log_file)
+        log_print(f"{'类别':<12} {'精确率':<10} {'召回率':<10} {'F1分数':<10} {'支持样本':<10}", log_file)
+        log_print("-" * 80, log_file)
+        for i, class_name in enumerate(class_names):
+            log_print(f"{class_name:<12} {precision[i]:<10.4f} {recall[i]:<10.4f} {f1[i]:<10.4f} {support[i]:<10d}", log_file)
+        
+        # 输出平均指标
+        log_print("-" * 80, log_file)
+        log_print(f"{'宏平均':<12} {macro_precision:<10.4f} {macro_recall:<10.4f} {macro_f1:<10.4f} {sum(support):<10d}", log_file)
+        log_print(f"{'微平均':<12} {micro_precision:<10.4f} {micro_recall:<10.4f} {micro_f1:<10.4f} {sum(support):<10d}", log_file)
+        log_print(f"{'加权平均':<12} {weighted_precision:<10.4f} {weighted_recall:<10.4f} {weighted_f1:<10.4f} {sum(support):<10d}", log_file)
         
         # 生成混淆矩阵
         cm = confusion_matrix(all_labels, all_preds)
@@ -289,8 +383,8 @@ def evaluate():
         log_print("\n各类别准确率:", log_file)
         class_accuracies = cm.diagonal() / cm.sum(axis=1)
         for i, (class_name, acc) in enumerate(zip(class_names, class_accuracies)):
-            support = cm[i].sum()
-            log_print(f"  {class_name}: {acc:.4f} (支持样本: {support})", log_file)
+            support_count = cm[i].sum()
+            log_print(f"  {class_name}: {acc:.4f} (支持样本: {support_count})", log_file)
         
     except Exception as e:
         log_print(f"生成详细报告时出错: {e}", log_file)
@@ -312,7 +406,7 @@ def evaluate():
         
         # 绘制分类指标图
         metrics_save_path = os.path.join(result_dir, f'classification_metrics_{timestamp}.png')
-        plot_classification_metrics(cm, class_names, metrics_save_path)
+        plot_classification_metrics(cm, class_names, metrics_save_path, precision, recall, f1)
         log_print(f"分类指标图已保存到: {metrics_save_path}", log_file)
         
         # 创建评估摘要
@@ -344,12 +438,27 @@ def evaluate():
             f.write(f"评估时间: {summary['evaluation_time']}\n")
             f.write("="*60 + "\n")
             
-            # 添加各类别准确率
-            f.write("\n各类别准确率:\n")
-            f.write("-" * 40 + "\n")
+            # 添加平均指标
+            f.write("\n整体性能指标:\n")
+            f.write("-" * 50 + "\n")
+            f.write(f"宏平均精确率: {macro_precision:.4f}\n")
+            f.write(f"宏平均召回率: {macro_recall:.4f}\n")
+            f.write(f"宏平均F1分数: {macro_f1:.4f}\n")
+            f.write(f"微平均精确率: {micro_precision:.4f}\n")
+            f.write(f"微平均召回率: {micro_recall:.4f}\n")
+            f.write(f"微平均F1分数: {micro_f1:.4f}\n")
+            f.write(f"加权平均精确率: {weighted_precision:.4f}\n")
+            f.write(f"加权平均召回率: {weighted_recall:.4f}\n")
+            f.write(f"加权平均F1分数: {weighted_f1:.4f}\n")
+            
+            # 添加各类别详细指标
+            f.write("\n各类别详细指标:\n")
+            f.write("-" * 80 + "\n")
+            f.write(f"{'类别':<12} {'准确率':<10} {'精确率':<10} {'召回率':<10} {'F1分数':<10} {'支持样本':<10}\n")
+            f.write("-" * 80 + "\n")
             for i, (class_name, acc) in enumerate(zip(class_names, class_accuracies)):
-                support = cm[i].sum()
-                f.write(f"  {class_name:8s}: {acc:.4f} (支持样本: {support:3d})\n")
+                support_count = cm[i].sum()
+                f.write(f"{class_name:<12} {acc:<10.4f} {precision[i]:<10.4f} {recall[i]:<10.4f} {f1[i]:<10.4f} {support_count:<10d}\n")
             
             # 添加混淆矩阵的文本版本
             f.write("\n混淆矩阵:\n")
@@ -378,8 +487,30 @@ def evaluate():
             'overall_accuracy': float(overall_accuracy),
             'total_samples': total,
             'correct_predictions': correct,
-            'class_accuracies': {class_names[i]: float(acc) for i, acc in enumerate(class_accuracies)},
-            'class_support': {class_names[i]: int(cm[i].sum()) for i in range(len(class_names))},
+            'macro_metrics': {
+                'precision': float(macro_precision),
+                'recall': float(macro_recall),
+                'f1_score': float(macro_f1)
+            },
+            'micro_metrics': {
+                'precision': float(micro_precision),
+                'recall': float(micro_recall),
+                'f1_score': float(micro_f1)
+            },
+            'weighted_metrics': {
+                'precision': float(weighted_precision),
+                'recall': float(weighted_recall),
+                'f1_score': float(weighted_f1)
+            },
+            'class_metrics': {
+                class_names[i]: {
+                    'accuracy': float(class_accuracies[i]),
+                    'precision': float(precision[i]),
+                    'recall': float(recall[i]),
+                    'f1_score': float(f1[i]),
+                    'support': int(support[i])
+                } for i in range(len(class_names))
+            },
             'model_config': {
                 'projection_dim': Config.projection_dim,
                 'attention_heads': Config.attention_heads,

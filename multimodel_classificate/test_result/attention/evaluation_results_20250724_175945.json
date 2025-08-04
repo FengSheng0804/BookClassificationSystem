@@ -1,0 +1,73 @@
+{
+  "fusion_strategy": "attention",
+  "overall_accuracy": 0.843520782396088,
+  "total_samples": 6135,
+  "correct_predictions": 5175,
+  "macro_metrics": {
+    "precision": 0.8458594561187885,
+    "recall": 0.8435751538832822,
+    "f1_score": 0.8436760888818778
+  },
+  "micro_metrics": {
+    "precision": 0.843520782396088,
+    "recall": 0.843520782396088,
+    "f1_score": 0.843520782396088
+  },
+  "weighted_metrics": {
+    "precision": 0.8450146929331419,
+    "recall": 0.843520782396088,
+    "f1_score": 0.843248151763607
+  },
+  "class_metrics": {
+    "art": {
+      "accuracy": 0.8351758793969849,
+      "precision": 0.9432463110102156,
+      "recall": 0.8351758793969849,
+      "f1_score": 0.8859275053304904,
+      "support": 995
+    },
+    "children": {
+      "accuracy": 0.9450661241098678,
+      "precision": 0.8625812441968431,
+      "recall": 0.9450661241098678,
+      "f1_score": 0.9019417475728155,
+      "support": 983
+    },
+    "history": {
+      "accuracy": 0.8951533135509396,
+      "precision": 0.8668582375478927,
+      "recall": 0.8951533135509396,
+      "f1_score": 0.8807785888077859,
+      "support": 1011
+    },
+    "literature": {
+      "accuracy": 0.6577868852459017,
+      "precision": 0.6866310160427808,
+      "recall": 0.6577868852459017,
+      "f1_score": 0.6718995290423861,
+      "support": 976
+    },
+    "medicine": {
+      "accuracy": 0.9270428015564203,
+      "precision": 0.9501495513459621,
+      "recall": 0.9270428015564203,
+      "f1_score": 0.9384539635647464,
+      "support": 1028
+    },
+    "novel": {
+      "accuracy": 0.8012259194395797,
+      "precision": 0.7656903765690377,
+      "recall": 0.8012259194395797,
+      "f1_score": 0.7830551989730423,
+      "support": 1142
+    }
+  },
+  "model_config": {
+    "projection_dim": 256,
+    "attention_heads": 8,
+    "fusion_dropout": 0.3,
+    "num_classes": 6
+  },
+  "evaluation_time": "2025-07-24 17:59:47",
+  "model_path": "multimodel_classificate/models/weights/attention\\best_clip_model.pt"
+}
