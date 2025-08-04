@@ -600,6 +600,7 @@ def train():
             # 梯度裁剪（防止梯度爆炸）
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
+            # 使用优化器更新参数
             optimizer.step()
             
             # 统计训练准确率
